@@ -8132,6 +8132,36 @@ class AITCMMSSystem:
             print(f"ERROR: Failed to refresh connection: {e}")
             raise
 
+    def create_default_parts_coordinator(self, cursor):
+        """Create the default parts coordinator user if it doesn't exist"""
+        try:
+            # Check if apenson user already exists
+            cursor.execute("SELECT id FROM users WHERE username = %s", ('apenson',))
+            existing_user = cursor.fetchone()
+
+            if not existing_user:
+                # Create the parts coordinator user
+                password_hash = UserManager.hash_password('apenson')
+                cursor.execute('''
+                    INSERT INTO users (username, password_hash, full_name, role, email, is_active, created_by, notes)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
+                ''', (
+                    'apenson',
+                    password_hash,
+                    'April Penson',
+                    'Parts Coordinator',
+                    'apenson@ait.com',
+                    True,
+                    'System',
+                    'Default parts coordinator account - manages PM Completion and MRO Stock tabs'
+                ))
+                print("CHECK: Default parts coordinator user (apenson) created successfully!")
+            else:
+                print("CHECK: Parts coordinator user (apenson) already exists")
+        except Exception as e:
+            print(f"Note: Could not create default parts coordinator user: {e}")
+            # Don't fail initialization if user creation fails
+
     def init_database(self):
         """Initialize comprehensive CMMS database with Neon PostgreSQL and connection pooling"""
         try:
@@ -8412,7 +8442,7 @@ class AITCMMSSystem:
                     username TEXT UNIQUE NOT NULL,
                     password_hash TEXT NOT NULL,
                     full_name TEXT NOT NULL,
-                    role TEXT NOT NULL CHECK (role IN ('Manager', 'Technician')),
+                    role TEXT NOT NULL CHECK (role IN ('Manager', 'Technician', 'Parts Coordinator')),
                     email TEXT,
                     is_active BOOLEAN DEFAULT TRUE,
                     created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -8422,6 +8452,22 @@ class AITCMMSSystem:
                     notes TEXT
                 )
             ''')
+
+            # SCHEMA MIGRATION: Update users table CHECK constraint for existing databases
+            # Drop old constraint and add new one that includes 'Parts Coordinator'
+            try:
+                cursor.execute('''
+                    ALTER TABLE users
+                    DROP CONSTRAINT IF EXISTS users_role_check
+                ''')
+                cursor.execute('''
+                    ALTER TABLE users
+                    ADD CONSTRAINT users_role_check
+                    CHECK (role IN ('Manager', 'Technician', 'Parts Coordinator'))
+                ''')
+                print("CHECK: Users table constraint updated to support Parts Coordinator role")
+            except Exception as e:
+                print(f"Note: Users table constraint update skipped or already applied: {e}")
 
             # User sessions table for tracking active sessions
             cursor.execute('''
@@ -8552,6 +8598,9 @@ class AITCMMSSystem:
 
             print("CHECK: Performance indexes created successfully!")
 
+            # Create default parts coordinator user if it doesn't exist
+            self.create_default_parts_coordinator(cursor)
+
             self.conn.commit()
             cursor.close()
             print("CHECK: Database tables created successfully!")
@@ -8636,6 +8685,9 @@ class AITCMMSSystem:
         if self.current_user_role == 'Manager':
             # Manager gets all tabs
             self.create_all_manager_tabs()
+        elif self.current_user_role == 'Parts Coordinator':
+            # Parts Coordinator gets PM Completion and MRO Stock tabs only
+            self.create_parts_coordinator_tabs()
         else:
             # Technicians only get CM tab
             self.create_technician_tabs()
@@ -8720,10 +8772,69 @@ class AITCMMSSystem:
         buttons_frame = ttk.Frame(welcome_frame)
         buttons_frame.pack(fill='x', pady=20)
     
-        ttk.Button(buttons_frame, text="Create New CM", 
+        ttk.Button(buttons_frame, text="Create New CM",
                 command=self.create_cm_dialog).pack(side='left', padx=10)
-        ttk.Button(buttons_frame, text="View My Assigned CMs", 
+        ttk.Button(buttons_frame, text="View My Assigned CMs",
                 command=self.show_my_cms).pack(side='left', padx=10)
+
+    def create_parts_coordinator_tabs(self):
+        """Create limited tabs for parts coordinator access - PM Completion and MRO Stock only"""
+        # Parts coordinator gets PM Completion and MRO Stock tabs only
+        self.create_pm_completion_tab()
+        self.mro_manager.create_mro_tab(self.notebook)
+
+        # Add an info tab explaining their access
+        self.create_parts_coordinator_info_tab()
+
+    def create_parts_coordinator_info_tab(self):
+        """Create an info tab for parts coordinator"""
+        info_frame = ttk.Frame(self.notebook)
+        self.notebook.add(info_frame, text="System Info")
+
+        # Welcome message
+        welcome_frame = ttk.LabelFrame(info_frame, text="Welcome to AIT CMMS", padding=20)
+        welcome_frame.pack(fill='both', expand=True, padx=20, pady=20)
+
+        welcome_text = f"""
+    Welcome, {self.user_name}!
+
+    You are logged in as a Parts Coordinator with access to:
+    - PM Completion Management
+      • View and edit PM completion records
+      • Track PM work performed by technicians
+      • Manage labor hours and completion dates
+      • Review PM history and statistics
+
+    - MRO Stock Management
+      • View and manage parts inventory
+      • Update stock quantities
+      • Track part usage and costs
+      • Monitor stock levels and reorder points
+      • Add new parts to inventory
+
+    Your Role:
+    - Manage all PM completion entries and data
+    - Oversee MRO stock inventory and parts tracking
+    - All changes you make are automatically saved to the database
+    - Your work ensures accurate maintenance records and inventory control
+
+    For additional system access or questions, please contact your manager.
+
+    System Information:
+    - User: {self.user_name}
+    - Role: {self.current_user_role}
+    - Login Time: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+
+    Quick Tips:
+    - Use PM Completion tab to review and manage maintenance records
+    - Use MRO Stock tab to manage parts inventory
+    - All changes are saved immediately to the database
+    - You can change your password using the menu at the top
+    """
+
+        info_label = ttk.Label(welcome_frame, text=welcome_text,
+                            font=('Arial', 11), justify='left')
+        info_label.pack(anchor='w')
         ttk.Button(buttons_frame, text="Refresh All CMs", 
                 command=self.load_corrective_maintenance).pack(side='left', padx=10)
 
