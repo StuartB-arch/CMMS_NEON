@@ -1404,7 +1404,7 @@ def generate_monthly_summary_report(conn, month=None, year=None):
         print(f"    - Average Days Open per CM: {cms_avg_days_open:.1f} days")
         print()
 
-    # ==================== OVERALL MAINTENANCE EFFICIENCY ====================
+    # ==================== OVERALL MAINTENANCE EFFICIENCY (YEAR-TO-DATE) ====================
     # Define constants for efficiency calculation
     TOTAL_TECHNICIANS = 9
     ANNUAL_HOURS_PER_TECHNICIAN = 1980
@@ -1412,31 +1412,65 @@ def generate_monthly_summary_report(conn, month=None, year=None):
     MONTHLY_AVAILABLE_HOURS = (TOTAL_TECHNICIANS * ANNUAL_HOURS_PER_TECHNICIAN) / 12  # 1485.0 hours
     TARGET_EFFICIENCY_RATE = 80.0
 
-    # Calculate total maintenance hours (PM + CM)
-    total_maintenance_hours = pm_total_hours + cm_total_hours
+    # Calculate YTD PM hours (from January 1st through end of current month)
+    cursor.execute('''
+        SELECT
+            SUM(labor_hours + labor_minutes/60.0) as ytd_pm_hours
+        FROM pm_completions
+        WHERE EXTRACT(YEAR FROM completion_date::date) = %s
+        AND EXTRACT(MONTH FROM completion_date::date) <= %s
+    ''', (year, month))
+
+    ytd_pm_hours = cursor.fetchone()[0] or 0.0
+
+    # Calculate YTD CM hours (from January 1st through end of current month)
+    cursor.execute('''
+        SELECT
+            SUM(labor_hours) as ytd_cm_hours
+        FROM corrective_maintenance
+        WHERE EXTRACT(YEAR FROM completion_date::date) = %s
+        AND EXTRACT(MONTH FROM completion_date::date) <= %s
+        AND (status = 'Closed' OR status = 'Completed')
+    ''', (year, month))
+
+    ytd_cm_hours = cursor.fetchone()[0] or 0.0
+
+    # Calculate total maintenance hours YTD (PM + CM)
+    ytd_total_maintenance_hours = ytd_pm_hours + ytd_cm_hours
+
+    # Calculate YTD available hours (months elapsed × monthly available hours)
+    ytd_available_hours = MONTHLY_AVAILABLE_HOURS * month
 
     # Calculate efficiency rate
-    efficiency_rate = (total_maintenance_hours / MONTHLY_AVAILABLE_HOURS) * 100 if MONTHLY_AVAILABLE_HOURS > 0 else 0.0
+    efficiency_rate = (ytd_total_maintenance_hours / ytd_available_hours) * 100 if ytd_available_hours > 0 else 0.0
 
     # Determine status
     efficiency_status = "MEETS TARGET ✓" if efficiency_rate >= TARGET_EFFICIENCY_RATE else "BELOW TARGET ✗"
 
     print()
     print("=" * 80)
-    print("OVERALL MAINTENANCE EFFICIENCY")
+    print("OVERALL MAINTENANCE EFFICIENCY (YEAR-TO-DATE)")
     print("=" * 80)
     print()
-    print(f"  Total PM Hours: {pm_total_hours:.1f} hours")
-    print(f"  Total CM Hours: {cm_total_hours:.1f} hours")
-    print(f"  Total Maintenance Hours: {total_maintenance_hours:.1f} hours")
+    print(f"  Period: January 1 - {month_name} {calendar.monthrange(year, month)[1]}, {year} ({month} months)")
     print()
-    print(f"  Monthly Available Hours: {MONTHLY_AVAILABLE_HOURS:.1f} hours")
-    print(f"    (Based on {TOTAL_TECHNICIANS} technicians × {ANNUAL_HOURS_PER_TECHNICIAN} hours/year ÷ 12 months)")
+    print(f"  YTD PM Hours: {ytd_pm_hours:.1f} hours")
+    print(f"  YTD CM Hours: {ytd_cm_hours:.1f} hours")
+    print(f"  YTD Total Maintenance Hours: {ytd_total_maintenance_hours:.1f} hours")
+    print()
+    print(f"  YTD Available Hours: {ytd_available_hours:.1f} hours")
+    print(f"    (Based on {TOTAL_TECHNICIANS} technicians × {ANNUAL_HOURS_PER_TECHNICIAN} hours/year ÷ 12 months × {month} months)")
+    print(f"    (Monthly Available: {MONTHLY_AVAILABLE_HOURS:.1f} hours)")
     print(f"    (Weekly Available: {WEEKLY_AVAILABLE_HOURS:.2f} hours)")
     print()
-    print(f"  Overall Efficiency Rate: {efficiency_rate:.1f}%")
+    print(f"  Overall Efficiency Rate (YTD): {efficiency_rate:.1f}%")
     print(f"  Target Efficiency Rate: {TARGET_EFFICIENCY_RATE:.1f}%")
     print(f"  Status: {efficiency_status}")
+    print()
+    print(f"  Current Month Only ({month_name}):")
+    print(f"    PM Hours: {pm_total_hours:.1f} hours")
+    print(f"    CM Hours: {cm_total_hours:.1f} hours")
+    print(f"    Total: {pm_total_hours + cm_total_hours:.1f} hours")
     print()
 
     if cms_open_current > 0:
@@ -2095,8 +2129,8 @@ def export_professional_monthly_report_pdf(conn, month=None, year=None):
         story.append(cm_table)
         story.append(Spacer(1, 20))
 
-        # ==================== OVERALL MAINTENANCE EFFICIENCY ====================
-        story.append(Paragraph("OVERALL MAINTENANCE EFFICIENCY", heading_style))
+        # ==================== OVERALL MAINTENANCE EFFICIENCY (YEAR-TO-DATE) ====================
+        story.append(Paragraph("OVERALL MAINTENANCE EFFICIENCY (YEAR-TO-DATE)", heading_style))
         story.append(Spacer(1, 10))
 
         # Define constants for efficiency calculation
@@ -2106,11 +2140,37 @@ def export_professional_monthly_report_pdf(conn, month=None, year=None):
         MONTHLY_AVAILABLE_HOURS = (TOTAL_TECHNICIANS * ANNUAL_HOURS_PER_TECHNICIAN) / 12  # 1485.0 hours
         TARGET_EFFICIENCY_RATE = 80.0
 
-        # Calculate total maintenance hours (PM + CM)
-        total_maintenance_hours = pm_total_hours + cm_total_hours
+        # Calculate YTD PM hours (from January 1st through end of current month)
+        cursor.execute('''
+            SELECT
+                SUM(labor_hours + labor_minutes/60.0) as ytd_pm_hours
+            FROM pm_completions
+            WHERE EXTRACT(YEAR FROM completion_date::date) = %s
+            AND EXTRACT(MONTH FROM completion_date::date) <= %s
+        ''', (year, month))
+
+        ytd_pm_hours = cursor.fetchone()[0] or 0.0
+
+        # Calculate YTD CM hours (from January 1st through end of current month)
+        cursor.execute('''
+            SELECT
+                SUM(labor_hours) as ytd_cm_hours
+            FROM corrective_maintenance
+            WHERE EXTRACT(YEAR FROM completion_date::date) = %s
+            AND EXTRACT(MONTH FROM completion_date::date) <= %s
+            AND (status = 'Closed' OR status = 'Completed')
+        ''', (year, month))
+
+        ytd_cm_hours = cursor.fetchone()[0] or 0.0
+
+        # Calculate total maintenance hours YTD (PM + CM)
+        ytd_total_maintenance_hours = ytd_pm_hours + ytd_cm_hours
+
+        # Calculate YTD available hours (months elapsed × monthly available hours)
+        ytd_available_hours = MONTHLY_AVAILABLE_HOURS * month
 
         # Calculate efficiency rate
-        efficiency_rate = (total_maintenance_hours / MONTHLY_AVAILABLE_HOURS) * 100 if MONTHLY_AVAILABLE_HOURS > 0 else 0.0
+        efficiency_rate = (ytd_total_maintenance_hours / ytd_available_hours) * 100 if ytd_available_hours > 0 else 0.0
 
         # Determine status and color
         if efficiency_rate >= TARGET_EFFICIENCY_RATE:
@@ -2121,17 +2181,24 @@ def export_professional_monthly_report_pdf(conn, month=None, year=None):
             status_color = colors.HexColor('#ef4444')  # Red
 
         # Build efficiency data table
+        month_name = calendar.month_name[month]
         efficiency_data = [
             ['METRIC', 'VALUE'],
-            ['Total PM Hours', f'{pm_total_hours:.1f} hours'],
-            ['Total CM Hours', f'{cm_total_hours:.1f} hours'],
-            ['Total Maintenance Hours', f'{total_maintenance_hours:.1f} hours'],
-            ['Monthly Available Hours', f'{MONTHLY_AVAILABLE_HOURS:.1f} hours'],
-            ['  (Based on)', f'{TOTAL_TECHNICIANS} technicians × {ANNUAL_HOURS_PER_TECHNICIAN} hrs/year ÷ 12 months'],
+            [f'Period', f'January 1 - {month_name} {calendar.monthrange(year, month)[1]}, {year} ({month} months)'],
+            ['YTD PM Hours', f'{ytd_pm_hours:.1f} hours'],
+            ['YTD CM Hours', f'{ytd_cm_hours:.1f} hours'],
+            ['YTD Total Maintenance Hours', f'{ytd_total_maintenance_hours:.1f} hours'],
+            ['YTD Available Hours', f'{ytd_available_hours:.1f} hours'],
+            ['  (Based on)', f'{TOTAL_TECHNICIANS} techs × {ANNUAL_HOURS_PER_TECHNICIAN} hrs/yr ÷ 12 × {month} months'],
+            ['  (Monthly Available)', f'{MONTHLY_AVAILABLE_HOURS:.1f} hours'],
             ['  (Weekly Available)', f'{WEEKLY_AVAILABLE_HOURS:.2f} hours'],
-            ['Overall Efficiency Rate', f'{efficiency_rate:.1f}%'],
+            ['Overall Efficiency Rate (YTD)', f'{efficiency_rate:.1f}%'],
             ['Target Efficiency Rate', f'{TARGET_EFFICIENCY_RATE:.1f}%'],
-            ['Status', efficiency_status]
+            ['Status', efficiency_status],
+            [f'Current Month Only ({month_name})', ''],
+            ['  PM Hours', f'{pm_total_hours:.1f} hours'],
+            ['  CM Hours', f'{cm_total_hours:.1f} hours'],
+            ['  Total', f'{pm_total_hours + cm_total_hours:.1f} hours']
         ]
 
         efficiency_table = Table(efficiency_data, colWidths=[3*inch, 3*inch])
@@ -2148,17 +2215,21 @@ def export_professional_monthly_report_pdf(conn, month=None, year=None):
             ('GRID', (0, 0), (-1, -1), 1, colors.HexColor('#cbd5e0')),
             ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
             ('LEFTPADDING', (0, 0), (-1, -1), 12),
-            ('LEFTPADDING', (0, 5), (0, 6), 24),  # Indent sub-items for calculation details
+            ('LEFTPADDING', (0, 6), (0, 8), 24),  # Indent sub-items for calculation details
+            ('LEFTPADDING', (0, 13), (0, 15), 24),  # Indent sub-items for current month
             ('RIGHTPADDING', (0, 0), (-1, -1), 12),
             ('TOPPADDING', (0, 0), (-1, -1), 8),
             ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
             # Highlight efficiency rate and status rows
-            ('BACKGROUND', (0, 7), (-1, 7), colors.HexColor('#e0f2fe')),  # Light blue for efficiency rate
-            ('FONTNAME', (0, 7), (-1, 7), 'Helvetica-Bold'),
-            ('FONTSIZE', (0, 7), (-1, 7), 11),
-            ('BACKGROUND', (0, 9), (-1, 9), colors.HexColor('#f0fdf4') if efficiency_rate >= TARGET_EFFICIENCY_RATE else colors.HexColor('#fef2f2')),
-            ('TEXTCOLOR', (1, 9), (1, 9), status_color),
+            ('BACKGROUND', (0, 9), (-1, 9), colors.HexColor('#e0f2fe')),  # Light blue for efficiency rate (YTD)
             ('FONTNAME', (0, 9), (-1, 9), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 9), (-1, 9), 11),
+            ('BACKGROUND', (0, 11), (-1, 11), colors.HexColor('#f0fdf4') if efficiency_rate >= TARGET_EFFICIENCY_RATE else colors.HexColor('#fef2f2')),
+            ('TEXTCOLOR', (1, 11), (1, 11), status_color),
+            ('FONTNAME', (0, 11), (-1, 11), 'Helvetica-Bold'),
+            # Highlight current month header
+            ('BACKGROUND', (0, 12), (-1, 12), colors.HexColor('#e2e8f0')),
+            ('FONTNAME', (0, 12), (-1, 12), 'Helvetica-Bold'),
         ]))
 
         story.append(efficiency_table)
