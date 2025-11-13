@@ -8211,7 +8211,7 @@ class AITCMMSSystem:
                 ''', (
                     'apenson',
                     password_hash,
-                    'April Penson',
+                    'Ashica Penson',
                     'Parts Coordinator',
                     'apenson@ait.com',
                     True,
@@ -8221,6 +8221,10 @@ class AITCMMSSystem:
                 print("CHECK: Default parts coordinator user (apenson) created successfully!")
             else:
                 print("CHECK: Parts coordinator user (apenson) already exists")
+                # Update the full name if it was wrong
+                cursor.execute('''
+                    UPDATE users SET full_name = %s WHERE username = %s AND full_name != %s
+                ''', ('Ashica Penson', 'apenson', 'Ashica Penson'))
         except Exception as e:
             print(f"Note: Could not create default parts coordinator user: {e}")
             # Don't fail initialization if user creation fails
