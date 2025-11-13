@@ -5833,6 +5833,15 @@ class AITCMMSSystem:
             self.root.destroy()
             return
 
+        # Initialize users table and create default users BEFORE login
+        try:
+            self.init_users_table_before_login()
+        except Exception as e:
+            messagebox.showerror("Database Error",
+                f"Failed to initialize users table:\n{str(e)}\n\nPlease check your database configuration.")
+            self.root.destroy()
+            return
+
         # Show login dialog after database pool is ready
         if not self.show_login_dialog():
             self.root.destroy()
@@ -8132,6 +8141,60 @@ class AITCMMSSystem:
             print(f"ERROR: Failed to refresh connection: {e}")
             raise
 
+    def init_users_table_before_login(self):
+        """Initialize users table and create default users BEFORE login dialog"""
+        conn = None
+        try:
+            conn = db_pool.get_connection()
+            cursor = conn.cursor()
+
+            # Create users table if it doesn't exist
+            cursor.execute('''
+                CREATE TABLE IF NOT EXISTS users (
+                    id SERIAL PRIMARY KEY,
+                    username TEXT UNIQUE NOT NULL,
+                    password_hash TEXT NOT NULL,
+                    full_name TEXT NOT NULL,
+                    role TEXT NOT NULL CHECK (role IN ('Manager', 'Technician', 'Parts Coordinator')),
+                    email TEXT,
+                    is_active BOOLEAN DEFAULT TRUE,
+                    created_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    updated_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    last_login TIMESTAMP,
+                    created_by TEXT,
+                    notes TEXT
+                )
+            ''')
+
+            # Update CHECK constraint for existing databases
+            try:
+                cursor.execute('''
+                    ALTER TABLE users
+                    DROP CONSTRAINT IF EXISTS users_role_check
+                ''')
+                cursor.execute('''
+                    ALTER TABLE users
+                    ADD CONSTRAINT users_role_check
+                    CHECK (role IN ('Manager', 'Technician', 'Parts Coordinator'))
+                ''')
+                print("CHECK: Users table constraint updated to support Parts Coordinator role")
+            except Exception as e:
+                print(f"Note: Users table constraint update skipped: {e}")
+
+            # Create default parts coordinator user
+            self.create_default_parts_coordinator(cursor)
+
+            conn.commit()
+            cursor.close()
+            db_pool.return_connection(conn)
+            print("CHECK: Users table initialized successfully")
+
+        except Exception as e:
+            if conn:
+                conn.rollback()
+                db_pool.return_connection(conn)
+            raise e
+
     def create_default_parts_coordinator(self, cursor):
         """Create the default parts coordinator user if it doesn't exist"""
         try:
@@ -8597,9 +8660,6 @@ class AITCMMSSystem:
             ''')
 
             print("CHECK: Performance indexes created successfully!")
-
-            # Create default parts coordinator user if it doesn't exist
-            self.create_default_parts_coordinator(cursor)
 
             self.conn.commit()
             cursor.close()
