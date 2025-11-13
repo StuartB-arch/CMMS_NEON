@@ -1404,6 +1404,42 @@ def generate_monthly_summary_report(conn, month=None, year=None):
         print(f"    - Average Days Open per CM: {cms_avg_days_open:.1f} days")
         print()
 
+    # ==================== OVERALL MAINTENANCE EFFICIENCY ====================
+    # Define constants for efficiency calculation
+    TOTAL_TECHNICIANS = 9
+    ANNUAL_HOURS_PER_TECHNICIAN = 1980
+    WEEKLY_AVAILABLE_HOURS = 342.69
+    MONTHLY_AVAILABLE_HOURS = (TOTAL_TECHNICIANS * ANNUAL_HOURS_PER_TECHNICIAN) / 12  # 1485.0 hours
+    TARGET_EFFICIENCY_RATE = 80.0
+
+    # Calculate total maintenance hours (PM + CM)
+    total_maintenance_hours = pm_total_hours + cm_total_hours
+
+    # Calculate efficiency rate
+    efficiency_rate = (total_maintenance_hours / MONTHLY_AVAILABLE_HOURS) * 100 if MONTHLY_AVAILABLE_HOURS > 0 else 0.0
+
+    # Determine status
+    efficiency_status = "MEETS TARGET ✓" if efficiency_rate >= TARGET_EFFICIENCY_RATE else "BELOW TARGET ✗"
+
+    print()
+    print("=" * 80)
+    print("OVERALL MAINTENANCE EFFICIENCY")
+    print("=" * 80)
+    print()
+    print(f"  Total PM Hours: {pm_total_hours:.1f} hours")
+    print(f"  Total CM Hours: {cm_total_hours:.1f} hours")
+    print(f"  Total Maintenance Hours: {total_maintenance_hours:.1f} hours")
+    print()
+    print(f"  Monthly Available Hours: {MONTHLY_AVAILABLE_HOURS:.1f} hours")
+    print(f"    (Based on {TOTAL_TECHNICIANS} technicians × {ANNUAL_HOURS_PER_TECHNICIAN} hours/year ÷ 12 months)")
+    print(f"    (Weekly Available: {WEEKLY_AVAILABLE_HOURS:.2f} hours)")
+    print()
+    print(f"  Overall Efficiency Rate: {efficiency_rate:.1f}%")
+    print(f"  Target Efficiency Rate: {TARGET_EFFICIENCY_RATE:.1f}%")
+    print(f"  Status: {efficiency_status}")
+    print()
+
+    if cms_open_current > 0:
         # Detailed breakdown of currently open CMs
         print("=" * 100)
         print(f"DETAILED BREAKDOWN: CURRENTLY OPEN CMs")
@@ -2057,6 +2093,75 @@ def export_professional_monthly_report_pdf(conn, month=None, year=None):
         ]))
     
         story.append(cm_table)
+        story.append(Spacer(1, 20))
+
+        # ==================== OVERALL MAINTENANCE EFFICIENCY ====================
+        story.append(Paragraph("OVERALL MAINTENANCE EFFICIENCY", heading_style))
+        story.append(Spacer(1, 10))
+
+        # Define constants for efficiency calculation
+        TOTAL_TECHNICIANS = 9
+        ANNUAL_HOURS_PER_TECHNICIAN = 1980
+        WEEKLY_AVAILABLE_HOURS = 342.69
+        MONTHLY_AVAILABLE_HOURS = (TOTAL_TECHNICIANS * ANNUAL_HOURS_PER_TECHNICIAN) / 12  # 1485.0 hours
+        TARGET_EFFICIENCY_RATE = 80.0
+
+        # Calculate total maintenance hours (PM + CM)
+        total_maintenance_hours = pm_total_hours + cm_total_hours
+
+        # Calculate efficiency rate
+        efficiency_rate = (total_maintenance_hours / MONTHLY_AVAILABLE_HOURS) * 100 if MONTHLY_AVAILABLE_HOURS > 0 else 0.0
+
+        # Determine status and color
+        if efficiency_rate >= TARGET_EFFICIENCY_RATE:
+            efficiency_status = "MEETS TARGET ✓"
+            status_color = colors.HexColor('#22c55e')  # Green
+        else:
+            efficiency_status = "BELOW TARGET ✗"
+            status_color = colors.HexColor('#ef4444')  # Red
+
+        # Build efficiency data table
+        efficiency_data = [
+            ['METRIC', 'VALUE'],
+            ['Total PM Hours', f'{pm_total_hours:.1f} hours'],
+            ['Total CM Hours', f'{cm_total_hours:.1f} hours'],
+            ['Total Maintenance Hours', f'{total_maintenance_hours:.1f} hours'],
+            ['Monthly Available Hours', f'{MONTHLY_AVAILABLE_HOURS:.1f} hours'],
+            ['  (Based on)', f'{TOTAL_TECHNICIANS} technicians × {ANNUAL_HOURS_PER_TECHNICIAN} hrs/year ÷ 12 months'],
+            ['  (Weekly Available)', f'{WEEKLY_AVAILABLE_HOURS:.2f} hours'],
+            ['Overall Efficiency Rate', f'{efficiency_rate:.1f}%'],
+            ['Target Efficiency Rate', f'{TARGET_EFFICIENCY_RATE:.1f}%'],
+            ['Status', efficiency_status]
+        ]
+
+        efficiency_table = Table(efficiency_data, colWidths=[3*inch, 3*inch])
+        efficiency_table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#2c5282')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (0, -1), 'LEFT'),
+            ('ALIGN', (1, 0), (1, -1), 'RIGHT'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 11),
+            ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+            ('FONTSIZE', (0, 1), (-1, -1), 10),
+            ('BACKGROUND', (0, 1), (-1, -1), colors.HexColor('#f7fafc')),
+            ('GRID', (0, 0), (-1, -1), 1, colors.HexColor('#cbd5e0')),
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+            ('LEFTPADDING', (0, 0), (-1, -1), 12),
+            ('LEFTPADDING', (0, 5), (0, 6), 24),  # Indent sub-items for calculation details
+            ('RIGHTPADDING', (0, 0), (-1, -1), 12),
+            ('TOPPADDING', (0, 0), (-1, -1), 8),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
+            # Highlight efficiency rate and status rows
+            ('BACKGROUND', (0, 7), (-1, 7), colors.HexColor('#e0f2fe')),  # Light blue for efficiency rate
+            ('FONTNAME', (0, 7), (-1, 7), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 7), (-1, 7), 11),
+            ('BACKGROUND', (0, 9), (-1, 9), colors.HexColor('#f0fdf4') if efficiency_rate >= TARGET_EFFICIENCY_RATE else colors.HexColor('#fef2f2')),
+            ('TEXTCOLOR', (1, 9), (1, 9), status_color),
+            ('FONTNAME', (0, 9), (-1, 9), 'Helvetica-Bold'),
+        ]))
+
+        story.append(efficiency_table)
         story.append(Spacer(1, 20))
 
         # ==================== DETAILED BREAKDOWN: DAYS TO CLOSE ====================
