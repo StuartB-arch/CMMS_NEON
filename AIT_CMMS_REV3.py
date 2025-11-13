@@ -8895,8 +8895,6 @@ class AITCMMSSystem:
         info_label = ttk.Label(welcome_frame, text=welcome_text,
                             font=('Arial', 11), justify='left')
         info_label.pack(anchor='w')
-        ttk.Button(buttons_frame, text="Refresh All CMs", 
-                command=self.load_corrective_maintenance).pack(side='left', padx=10)
 
     def show_my_cms(self):
         """Show CMs assigned to current technician"""
