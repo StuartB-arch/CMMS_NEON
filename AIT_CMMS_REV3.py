@@ -18,8 +18,17 @@ from equipment_history import show_equipment_history, EquipmentHistory
 from kpi_auto_collector import KPIAutoCollector
 from kpi_trend_analyzer import show_kpi_trends, KPITrendAnalyzer
 import shutil
-import tkinter as tk
-from tkinter import ttk, messagebox, filedialog
+import sys
+from PyQt5.QtWidgets import (
+    QApplication, QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QGridLayout,
+    QLabel, QPushButton, QLineEdit, QTextEdit, QComboBox, QCheckBox, QRadioButton,
+    QTreeWidget, QTreeWidgetItem, QTabWidget, QDialog, QMessageBox, QFileDialog,
+    QFrame, QScrollArea, QSplitter, QTableWidget, QTableWidgetItem, QButtonGroup,
+    QProgressBar, QMenuBar, QMenu, QAction, QListWidget, QFormLayout, QGroupBox,
+    QSpinBox, QDoubleSpinBox, QDateEdit, QTimeEdit, QHeaderView, QAbstractItemView
+)
+from PyQt5.QtCore import Qt, QTimer, pyqtSignal, QDate, QTime, QDateTime
+from PyQt5.QtGui import QPixmap, QIcon, QFont, QColor, QBrush
 import pandas as pd
 import psycopg2
 from psycopg2 import sql, extras
@@ -2761,16 +2770,16 @@ def export_professional_monthly_report_pdf(conn, month=None, year=None):
 
 
 
-class AITCMMSSystem:
+class AITCMMSSystem(QMainWindow):
     """Complete AIT CMMS - Computerized Maintenance Management System"""
     
     def show_closing_sync_dialog(self):
         """Show dialog asking user to confirm database sync on close"""
     
-        dialog = tk.Toplevel(self.root)
-        dialog.title("Closing Program - Database Sync")
+        dialog = QDialog(self.root)
+        dialog.setWindowTitle("Closing Program - Database Sync")
         dialog.geometry("600x500")
-        dialog.transient(self.root)
+        dialog.setParent(self.root)
         dialog.grab_set()
     
         # Center dialog
@@ -2782,19 +2791,19 @@ class AITCMMSSystem:
         result = {"action": "cancel"}  # Default to cancel
     
         # Header
-        header_frame = ttk.Frame(dialog, padding=20)
+        header_frame = QWidget(dialog, padding=20)
         header_frame.pack(fill='x')
     
-        ttk.Label(header_frame, text="Closing AIT CMMS", 
+        QLabel(header_frame, text="Closing AIT CMMS", 
                 font=('Arial', 16, 'bold')).pack()
-        ttk.Label(header_frame, text="Database Backup Confirmation", 
+        QLabel(header_frame, text="Database Backup Confirmation", 
                 font=('Arial', 11), foreground='blue').pack(pady=5)
     
         # Separator
-        ttk.Separator(dialog, orient='horizontal').pack(fill='x', pady=10)
+        QFrame(dialog, orient='horizontal').pack(fill='x', pady=10)
     
         # Info section
-        info_frame = ttk.LabelFrame(dialog, text="Session Information", padding=15)
+        info_frame = QLabelFrame(dialog, text="Session Information", padding=15)
         info_frame.pack(fill='both', expand=True, padx=20, pady=10)
     
         session_duration = datetime.now() - self.session_start_time
@@ -2812,11 +2821,11 @@ class AITCMMSSystem:
     SharePoint Folder: {os.path.basename(self.backup_sync_dir) if hasattr(self, 'backup_sync_dir') and self.backup_sync_dir else 'Not Connected'}
         """
     
-        ttk.Label(info_frame, text=info_text, justify='left', 
+        QLabel(info_frame, text=info_text, justify='left', 
                 font=('Courier', 9)).pack(anchor='w')
     
         # Sync explanation
-        sync_frame = ttk.LabelFrame(dialog, text="What Happens Next", padding=15)
+        sync_frame = QLabelFrame(dialog, text="What Happens Next", padding=15)
         sync_frame.pack(fill='x', padx=20, pady=10)
     
         sync_text = """When you click 'Backup and Close':
@@ -2829,31 +2838,31 @@ class AITCMMSSystem:
     This ensures all your work is saved.
         """
     
-        ttk.Label(sync_frame, text=sync_text, justify='left').pack(anchor='w')
+        QLabel(sync_frame, text=sync_text, justify='left').pack(anchor='w')
     
         # Important note
-        note_frame = ttk.Frame(dialog, padding=10)
+        note_frame = QWidget(dialog, padding=10)
         note_frame.pack(fill='x', padx=20)
     
-        ttk.Label(note_frame, 
+        QLabel(note_frame, 
                   text="Note: Last person to close the program pushes the final database state",
                   foreground='blue', font=('Arial', 9),
                   wraplength=550).pack()
     
         # Buttons
-        button_frame = ttk.Frame(dialog, padding=15)
+        button_frame = QWidget(dialog, padding=15)
         button_frame.pack(fill='x')
     
         def sync_and_close():
             result["action"] = "sync_and_close"
-            dialog.destroy()
+            dialog.close()
     
         def cancel_close():
             result["action"] = "cancel"
-            dialog.destroy()
+            dialog.close()
     
         def close_without_sync():
-            confirm = messagebox.askyesno(
+            confirm = QMessageBox.question(self, 
                 "Confirm Close Without Backup",
                 "Close without backing up to SharePoint?\n\n"
                 "CHECK: WARNING: Your changes will NOT be saved!\n"
@@ -2864,20 +2873,20 @@ class AITCMMSSystem:
             )
             if confirm:
                 result["action"] = "close_without_sync"
-                dialog.destroy()
+                dialog.close()
     
-        ttk.Button(button_frame, text="Backup and Close", 
+        QPushButton(button_frame, text="Backup and Close", 
                 command=sync_and_close,
                 style='Accent.TButton').pack(side='left', padx=5)
     
-        ttk.Button(button_frame, text="Cancel", 
+        QPushButton(button_frame, text="Cancel", 
                 command=cancel_close).pack(side='left', padx=5)
     
-        ttk.Button(button_frame, text="Close Without Backup", 
+        QPushButton(button_frame, text="Close Without Backup", 
                 command=close_without_sync).pack(side='right', padx=5)
     
         # Wait for dialog
-        dialog.wait_window()
+        dialog.exec_()
     
         return result["action"]
     
@@ -2990,17 +2999,17 @@ class AITCMMSSystem:
                 report += f"  - Expected catch-up time: {math.ceil(never_done/(monthly_capacity + 50))}-{math.ceil(never_done/(monthly_capacity + 100))} months\n\n"
         
             # Show in dialog
-            dialog = tk.Toplevel(self.root)
-            dialog.title("PM Capacity Analysis")
+            dialog = QDialog(self.root)
+            dialog.setWindowTitle("PM Capacity Analysis")
             dialog.geometry("800x600")
             
-            text_frame = ttk.Frame(dialog)
+            text_frame = QWidget(dialog)
             text_frame.pack(fill='both', expand=True, padx=10, pady=10)
             
-            scrollbar = ttk.Scrollbar(text_frame)
+            scrollbar = QScrollArea(text_frame)
             scrollbar.pack(side='right', fill='y')
             
-            text_widget = tk.Text(text_frame, wrap='word', yscrollcommand=scrollbar.set, 
+            text_widget = QTextEdit(text_frame, wrap='word', yscrollcommand=scrollbar.set, 
                                 font=('Courier', 10))
             text_widget.pack(fill='both', expand=True)
             scrollbar.config(command=text_widget.yview)
@@ -3009,54 +3018,54 @@ class AITCMMSSystem:
             text_widget.config(state='disabled')
         
             # Close button
-            ttk.Button(dialog, text="Close", command=dialog.destroy).pack(pady=10)
+            QPushButton(dialog, text="Close", command=dialog.destroy).pack(pady=10)
         
         except Exception as e:
-            messagebox.showerror("Error", f"Failed to analyze PM capacity: {str(e)}")
+            QMessageBox.critical(self, "Error", f"Failed to analyze PM capacity: {str(e)}")
     
     
     
     def add_cannot_find_asset_dialog(self):
         """Dialog to manually add a new Cannot Find asset with auto-fill functionality"""
-        dialog = tk.Toplevel(self.root)
-        dialog.title("Add Cannot Find Asset")
+        dialog = QDialog(self.root)
+        dialog.setWindowTitle("Add Cannot Find Asset")
         dialog.geometry("500x450")
-        dialog.transient(self.root)
+        dialog.setParent(self.root)
         dialog.grab_set()
 
         # Form fields
-        ttk.Label(dialog, text="BFM Equipment No:").grid(row=0, column=0, sticky='w', padx=10, pady=10)
+        QLabel(dialog, text="BFM Equipment No:").grid(row=0, column=0, sticky='w', padx=10, pady=10)
         bfm_var = tk.StringVar()
-        bfm_entry = ttk.Entry(dialog, textvariable=bfm_var, width=30)
+        bfm_entry = QLineEdit(dialog, textvariable=bfm_var, width=30)
         bfm_entry.grid(row=0, column=1, padx=10, pady=10)
 
-        ttk.Label(dialog, text="Description:").grid(row=1, column=0, sticky='w', padx=10, pady=10)
+        QLabel(dialog, text="Description:").grid(row=1, column=0, sticky='w', padx=10, pady=10)
         desc_var = tk.StringVar()
-        desc_entry = ttk.Entry(dialog, textvariable=desc_var, width=30)
+        desc_entry = QLineEdit(dialog, textvariable=desc_var, width=30)
         desc_entry.grid(row=1, column=1, padx=10, pady=10)
         
-        ttk.Label(dialog, text="Location:").grid(row=2, column=0, sticky='w', padx=10, pady=10)
+        QLabel(dialog, text="Location:").grid(row=2, column=0, sticky='w', padx=10, pady=10)
         location_var = tk.StringVar()
-        location_entry = ttk.Entry(dialog, textvariable=location_var, width=30)
+        location_entry = QLineEdit(dialog, textvariable=location_var, width=30)
         location_entry.grid(row=2, column=1, padx=10, pady=10)
 
-        ttk.Label(dialog, text="Reported By (Technician):").grid(row=3, column=0, sticky='w', padx=10, pady=10)
+        QLabel(dialog, text="Reported By (Technician):").grid(row=3, column=0, sticky='w', padx=10, pady=10)
         tech_var = tk.StringVar()
-        tech_combo = ttk.Combobox(dialog, textvariable=tech_var, width=28)
+        tech_combo = QComboBox(dialog, textvariable=tech_var, width=28)
         tech_combo['values'] = self.technicians if hasattr(self, 'technicians') else []
         tech_combo.grid(row=3, column=1, padx=10, pady=10)
 
-        ttk.Label(dialog, text="Report Date:").grid(row=4, column=0, sticky='w', padx=10, pady=10)
+        QLabel(dialog, text="Report Date:").grid(row=4, column=0, sticky='w', padx=10, pady=10)
         date_var = tk.StringVar(value=datetime.now().strftime('%Y-%m-%d'))
-        date_entry = ttk.Entry(dialog, textvariable=date_var, width=30)
+        date_entry = QLineEdit(dialog, textvariable=date_var, width=30)
         date_entry.grid(row=4, column=1, padx=10, pady=10)
         
-        ttk.Label(dialog, text="Notes (Optional):").grid(row=5, column=0, sticky='nw', padx=10, pady=10)
-        notes_text = tk.Text(dialog, width=30, height=5)
+        QLabel(dialog, text="Notes (Optional):").grid(row=5, column=0, sticky='nw', padx=10, pady=10)
+        notes_text = QTextEdit(dialog, width=30, height=5)
         notes_text.grid(row=5, column=1, padx=10, pady=10)
 
         # Status label for autofill feedback
-        status_label = ttk.Label(dialog, text="", foreground="blue")
+        status_label = QLabel(dialog, text="", foreground="blue")
         status_label.grid(row=6, column=0, columnspan=2, pady=5)
 
         def autofill_from_bfm(*args):
@@ -3108,18 +3117,18 @@ class AITCMMSSystem:
     
             # Validation
             if not bfm_no:
-                messagebox.showwarning("Validation Error", "BFM Equipment No. is required")
+                QMessageBox.warning(self, "Validation Error", "BFM Equipment No. is required")
                 return
     
             if not technician:
-                messagebox.showwarning("Validation Error", "Technician name is required")
+                QMessageBox.warning(self, "Validation Error", "Technician name is required")
                 return
     
             # Validate date format
             try:
                 datetime.strptime(reported_date, '%Y-%m-%d')
             except ValueError:
-                messagebox.showwarning("Validation Error", "Date must be in YYYY-MM-DD format")
+                QMessageBox.warning(self, "Validation Error", "Date must be in YYYY-MM-DD format")
                 return
     
             try:
@@ -3130,7 +3139,7 @@ class AITCMMSSystem:
                 existing = cursor.fetchone()
         
                 if existing:
-                    result = messagebox.askyesno(
+                    result = QMessageBox.question(self, 
                         "Asset Exists",
                         f"Asset {bfm_no} already exists in Cannot Find list.\n\nUpdate the record with new information?"
                     )
@@ -3160,7 +3169,7 @@ class AITCMMSSystem:
         
                 self.conn.commit()
         
-                messagebox.showinfo("Success", f"Cannot Find asset {bfm_no} added successfully")
+                QMessageBox.information(self, "Success", f"Cannot Find asset {bfm_no} added successfully")
         
                 # Refresh the Cannot Find list
                 self.load_cannot_find_assets()
@@ -3169,20 +3178,20 @@ class AITCMMSSystem:
                 if hasattr(self, 'update_equipment_statistics'):
                     self.update_equipment_statistics()
         
-                dialog.destroy()
+                dialog.close()
         
             except Exception as e:
-                messagebox.showerror("Error", f"Failed to add Cannot Find asset: {str(e)}")
+                QMessageBox.critical(self, "Error", f"Failed to add Cannot Find asset: {str(e)}")
 
         # Buttons
-        button_frame = ttk.Frame(dialog)
+        button_frame = QWidget(dialog)
         button_frame.grid(row=7, column=0, columnspan=2, pady=20)
         
-        ttk.Button(button_frame, text="Save", command=save_cannot_find_asset).pack(side='left', padx=10)
-        ttk.Button(button_frame, text="Cancel", command=dialog.destroy).pack(side='left', padx=10)
+        QPushButton(button_frame, text="Save", command=save_cannot_find_asset).pack(side='left', padx=10)
+        QPushButton(button_frame, text="Cancel", command=dialog.destroy).pack(side='left', padx=10)
 
         # Focus on first entry
-        bfm_entry.focus()
+        bfm_entry.setFocus()
     
     
     
@@ -3195,43 +3204,43 @@ class AITCMMSSystem:
         technician = self.completion_tech_var.get().strip()
     
         if not bfm_no:
-            messagebox.showwarning("Warning", "Please select equipment first")
+            QMessageBox.warning(self, "Warning", "Please select equipment first")
             return
     
         # Create CM dialog
-        dialog = tk.Toplevel(self.root)
-        dialog.title("Create CM from PM")
+        dialog = QDialog(self.root)
+        dialog.setWindowTitle("Create CM from PM")
         dialog.geometry("600x700")
-        dialog.transient(self.root)
+        dialog.setParent(self.root)
         dialog.grab_set()
     
         # Header
-        header = ttk.Label(dialog, text="Create Corrective Maintenance from PM", 
+        header = QLabel(dialog, text="Create Corrective Maintenance from PM", 
                         font=('Arial', 12, 'bold'))
         header.pack(pady=10)
     
         # Info label
         info_text = f"Creating CM for Equipment: {bfm_no}"
-        ttk.Label(dialog, text=info_text, foreground='blue').pack(pady=5)
+        QLabel(dialog, text=info_text, foreground='blue').pack(pady=5)
     
         # Form frame
-        form_frame = ttk.LabelFrame(dialog, text="CM Details", padding=15)
+        form_frame = QLabelFrame(dialog, text="CM Details", padding=15)
         form_frame.pack(fill='both', expand=True, padx=10, pady=5)
     
         row = 0
     
         # CM Number (auto-generated)
-        ttk.Label(form_frame, text="CM Number:").grid(row=row, column=0, sticky='w', pady=5)
+        QLabel(form_frame, text="CM Number:").grid(row=row, column=0, sticky='w', pady=5)
         cm_number = self.generate_cm_number()
         cm_number_var = tk.StringVar(value=cm_number)
-        ttk.Entry(form_frame, textvariable=cm_number_var, width=20, state='readonly').grid(
+        QLineEdit(form_frame, textvariable=cm_number_var, width=20, state='readonly').grid(
             row=row, column=1, sticky='w', padx=5, pady=5)
         row += 1
     
         # BFM Equipment (pre-filled, readonly)
-        ttk.Label(form_frame, text="BFM Equipment:").grid(row=row, column=0, sticky='w', pady=5)
+        QLabel(form_frame, text="BFM Equipment:").grid(row=row, column=0, sticky='w', pady=5)
         bfm_var = tk.StringVar(value=bfm_no)
-        ttk.Entry(form_frame, textvariable=bfm_var, width=30, state='readonly').grid(
+        QLineEdit(form_frame, textvariable=bfm_var, width=30, state='readonly').grid(
             row=row, column=1, sticky='w', padx=5, pady=5)
         row += 1
     
@@ -3241,47 +3250,47 @@ class AITCMMSSystem:
         result = cursor.fetchone()
         equip_desc = result[0] if result else "Unknown"
     
-        ttk.Label(form_frame, text=f"Description: {equip_desc}", 
+        QLabel(form_frame, text=f"Description: {equip_desc}", 
                 foreground='gray').grid(row=row, column=1, sticky='w', padx=5)
         row += 1
     
         # Description (pre-filled with PM notes if available)
-        ttk.Label(form_frame, text="CM Description:*").grid(row=row, column=0, sticky='nw', pady=5)
-        description_text = tk.Text(form_frame, width=40, height=4)
+        QLabel(form_frame, text="CM Description:*").grid(row=row, column=0, sticky='nw', pady=5)
+        description_text = QTextEdit(form_frame, width=40, height=4)
         description_text.grid(row=row, column=1, sticky='w', padx=5, pady=5)
         if pm_notes:
             description_text.insert('1.0', f"Issue found during PM:\n{pm_notes}")
         row += 1
     
         # Priority
-        ttk.Label(form_frame, text="Priority:*").grid(row=row, column=0, sticky='w', pady=5)
+        QLabel(form_frame, text="Priority:*").grid(row=row, column=0, sticky='w', pady=5)
         priority_var = tk.StringVar(value="Medium")
-        priority_combo = ttk.Combobox(form_frame, textvariable=priority_var, 
+        priority_combo = QComboBox(form_frame, textvariable=priority_var, 
                                      values=['Low', 'Medium', 'High', 'Critical'], 
                                      width=15, state='readonly')
         priority_combo.grid(row=row, column=1, sticky='w', padx=5, pady=5)
         row += 1
     
         # Assigned Technician (default to current user)
-        ttk.Label(form_frame, text="Assigned To:*").grid(row=row, column=0, sticky='w', pady=5)
+        QLabel(form_frame, text="Assigned To:*").grid(row=row, column=0, sticky='w', pady=5)
         assigned_var = tk.StringVar(value=self.user_name if hasattr(self, 'user_name') else technician)
-        assigned_combo = ttk.Combobox(form_frame, textvariable=assigned_var, 
+        assigned_combo = QComboBox(form_frame, textvariable=assigned_var, 
                                     values=self.technicians, width=20)
         assigned_combo.grid(row=row, column=1, sticky='w', padx=5, pady=5)
         row += 1
     
         # CM Date (default to today)
-        ttk.Label(form_frame, text="CM Date:*").grid(row=row, column=0, sticky='w', pady=5)
+        QLabel(form_frame, text="CM Date:*").grid(row=row, column=0, sticky='w', pady=5)
         cm_date_var = tk.StringVar(value=datetime.now().strftime('%Y-%m-%d'))
-        ttk.Entry(form_frame, textvariable=cm_date_var, width=20).grid(
+        QLineEdit(form_frame, textvariable=cm_date_var, width=20).grid(
             row=row, column=1, sticky='w', padx=5, pady=5)
-        ttk.Label(form_frame, text="(YYYY-MM-DD)", foreground='gray').grid(
+        QLabel(form_frame, text="(YYYY-MM-DD)", foreground='gray').grid(
             row=row, column=2, sticky='w', padx=5)
         row += 1
     
         # Additional Notes
-        ttk.Label(form_frame, text="Additional Notes:").grid(row=row, column=0, sticky='nw', pady=5)
-        notes_text = tk.Text(form_frame, width=40, height=3)
+        QLabel(form_frame, text="Additional Notes:").grid(row=row, column=0, sticky='nw', pady=5)
+        notes_text = QTextEdit(form_frame, width=40, height=3)
         notes_text.grid(row=row, column=1, sticky='w', padx=5, pady=5)
         row += 1
     
@@ -3289,11 +3298,11 @@ class AITCMMSSystem:
         def validate_and_save_cm():
             # Validate required fields
             if not description_text.get('1.0', 'end-1c').strip():
-                messagebox.showerror("Error", "Please enter CM description")
+                QMessageBox.critical(self, "Error", "Please enter CM description")
                 return
         
             if not assigned_var.get().strip():
-                messagebox.showerror("Error", "Please assign a technician")
+                QMessageBox.critical(self, "Error", "Please assign a technician")
                 return
         
             # Validate date format
@@ -3302,7 +3311,7 @@ class AITCMMSSystem:
                 datetime.strptime(date_str, '%Y-%m-%d')
                 validated_date = date_str
             except ValueError:
-                messagebox.showerror("Error", "Invalid date format. Use YYYY-MM-DD")
+                QMessageBox.critical(self, "Error", "Invalid date format. Use YYYY-MM-DD")
                 return
         
             # Save to database
@@ -3325,7 +3334,7 @@ class AITCMMSSystem:
                 ))
                 self.conn.commit()
             
-                messagebox.showinfo("Success", 
+                QMessageBox.information(self, "Success", 
                                 f"CHECK: CM Created Successfully!\n\n"
                                 f"CM Number: {cm_number_var.get()}\n"
                                 f"Equipment: {bfm_var.get()}\n"
@@ -3333,7 +3342,7 @@ class AITCMMSSystem:
                                 f"Assigned to: {assigned_var.get()}\n\n"
                                 f"The CM is now visible in the CM Completions tab.")
             
-                dialog.destroy()
+                dialog.close()
             
                 # Refresh CM list if the tab exists
                 if hasattr(self, 'load_corrective_maintenance'):
@@ -3354,20 +3363,20 @@ class AITCMMSSystem:
                     pass
         
             except Exception as e:
-                messagebox.showerror("Error", f"Failed to create CM: {str(e)}")
+                QMessageBox.critical(self, "Error", f"Failed to create CM: {str(e)}")
     
         # Buttons
-        button_frame = ttk.Frame(dialog)
+        button_frame = QWidget(dialog)
         button_frame.pack(fill='x', padx=10, pady=15)
     
-        ttk.Button(button_frame, text="Save CM", command=validate_and_save_cm, 
+        QPushButton(button_frame, text="Save CM", command=validate_and_save_cm, 
                 width=15).pack(side='left', padx=5)
-        ttk.Button(button_frame, text="Cancel", command=dialog.destroy, 
+        QPushButton(button_frame, text="Cancel", command=dialog.destroy, 
                 width=15).pack(side='left', padx=5)
     
         # Help text
         help_text = "* Required fields\nThis CM will be saved to the database and visible to all technicians."
-        ttk.Label(dialog, text=help_text, foreground='gray', font=('Arial', 9)).pack(pady=5)
+        QLabel(dialog, text=help_text, foreground='gray', font=('Arial', 9)).pack(pady=5)
 
 
     def generate_cm_number(self):
@@ -3393,7 +3402,7 @@ class AITCMMSSystem:
     def prompt_parts_required(self, cm_number, bfm_no, technician_name):
         """Ask technician if parts are required for this CM and open request form if yes"""
         try:
-            answer = messagebox.askyesno(
+            answer = QMessageBox.question(self, 
                 "Parts Required?",
                 "Are parts required to complete this CM?\n\nIf yes, you'll be prompted to request parts (Part #, Model #, Website)."
             )
@@ -3404,26 +3413,26 @@ class AITCMMSSystem:
 
     def open_parts_request_form(self, cm_number, bfm_no, technician_name):
         """Open a dialog to capture parts request details and send to coordinator"""
-        dialog = tk.Toplevel(self.root)
-        dialog.title(f"Parts Request for {cm_number}")
+        dialog = QDialog(self.root)
+        dialog.setWindowTitle(f"Parts Request for {cm_number}")
         dialog.geometry("750x520")
-        dialog.transient(self.root)
+        dialog.setParent(self.root)
         dialog.grab_set()
 
-        header = ttk.Label(dialog, text=f"Request Parts for CM {cm_number} (BFM: {bfm_no})", font=('Arial', 12, 'bold'))
+        header = QLabel(dialog, text=f"Request Parts for CM {cm_number} (BFM: {bfm_no})", font=('Arial', 12, 'bold'))
         header.pack(pady=10)
 
         # Table-like entry area for multiple items
-        table_frame = ttk.LabelFrame(dialog, text="Requested Parts", padding=10)
+        table_frame = QLabelFrame(dialog, text="Requested Parts", padding=10)
         table_frame.pack(fill='both', expand=True, padx=10, pady=10)
 
         columns = ("Part Number", "Model Number", "Website (optional)")
-        tree = ttk.Treeview(table_frame, columns=columns, show='headings', height=7)
+        tree = QTreeWidget(table_frame, columns=columns, show='headings', height=7)
         for col, w in zip(columns, (160, 160, 300)):
             tree.heading(col, text=col)
             tree.column(col, width=w)
 
-        vsb = ttk.Scrollbar(table_frame, orient='vertical', command=tree.yview)
+        vsb = QScrollArea(table_frame, orient='vertical', command=tree.yview)
         tree.configure(yscrollcommand=vsb.set)
         tree.grid(row=0, column=0, sticky='nsew')
         vsb.grid(row=0, column=1, sticky='ns')
@@ -3431,38 +3440,38 @@ class AITCMMSSystem:
         table_frame.grid_columnconfigure(0, weight=1)
 
         # Entry row
-        entry_frame = ttk.Frame(dialog)
+        entry_frame = QWidget(dialog)
         entry_frame.pack(fill='x', padx=10, pady=(0,10))
         part_var = tk.StringVar()
         model_var = tk.StringVar()
         site_var = tk.StringVar()
-        ttk.Label(entry_frame, text="Part #:").pack(side='left', padx=(0,5))
-        ttk.Entry(entry_frame, textvariable=part_var, width=20).pack(side='left', padx=(0,10))
-        ttk.Label(entry_frame, text="Model #:").pack(side='left', padx=(0,5))
-        ttk.Entry(entry_frame, textvariable=model_var, width=20).pack(side='left', padx=(0,10))
-        ttk.Label(entry_frame, text="Website:").pack(side='left', padx=(0,5))
-        ttk.Entry(entry_frame, textvariable=site_var, width=40).pack(side='left', padx=(0,10))
+        QLabel(entry_frame, text="Part #:").pack(side='left', padx=(0,5))
+        QLineEdit(entry_frame, textvariable=part_var, width=20).pack(side='left', padx=(0,10))
+        QLabel(entry_frame, text="Model #:").pack(side='left', padx=(0,5))
+        QLineEdit(entry_frame, textvariable=model_var, width=20).pack(side='left', padx=(0,10))
+        QLabel(entry_frame, text="Website:").pack(side='left', padx=(0,5))
+        QLineEdit(entry_frame, textvariable=site_var, width=40).pack(side='left', padx=(0,10))
 
         def add_item():
             pn = part_var.get().strip()
             if not pn:
-                messagebox.showerror("Missing Part #", "Please enter a Part Number")
+                QMessageBox.critical(self, "Missing Part #", "Please enter a Part Number")
                 return
             tree.insert('', 'end', values=(pn, model_var.get().strip(), site_var.get().strip()))
             part_var.set(''); model_var.set(''); site_var.set('')
 
-        ttk.Button(entry_frame, text="Add", command=add_item).pack(side='left')
+        QPushButton(entry_frame, text="Add", command=add_item).pack(side='left')
 
         # Notes
-        notes_frame = ttk.LabelFrame(dialog, text="Notes (optional)", padding=8)
+        notes_frame = QLabelFrame(dialog, text="Notes (optional)", padding=8)
         notes_frame.pack(fill='x', padx=10, pady=5)
-        notes_text = tk.Text(notes_frame, width=90, height=3)
+        notes_text = QTextEdit(notes_frame, width=90, height=3)
         notes_text.pack(fill='x')
 
         def on_submit():
             items = [tree.item(i)['values'] for i in tree.get_children()]
             if not items:
-                messagebox.showerror("No Items", "Please add at least one requested part")
+                QMessageBox.critical(self, "No Items", "Please add at least one requested part")
                 return
             try:
                 # Persist requests
@@ -3479,7 +3488,7 @@ class AITCMMSSystem:
                     ''', (cm_number, bfm_no, part_no, model_no, website, technician_name, today, notes_text.get('1.0', 'end-1c').strip()))
                 self.conn.commit()
             except Exception as e:
-                messagebox.showerror("Error", f"Failed to save parts request: {e}")
+                QMessageBox.critical(self, "Error", f"Failed to save parts request: {e}")
                 return
 
             # Attempt to send email
@@ -3493,19 +3502,19 @@ class AITCMMSSystem:
                         WHERE cm_number = %s
                     ''', (cm_number,))
                     self.conn.commit()
-                    messagebox.showinfo("Sent", "Parts request emailed to Parts Coordinator.")
+                    QMessageBox.information(self, "Sent", "Parts request emailed to Parts Coordinator.")
                 else:
-                    messagebox.showwarning("Email Not Sent", "Saved request, but email could not be sent automatically. A draft will be shown.")
+                    QMessageBox.warning(self, "Email Not Sent", "Saved request, but email could not be sent automatically. A draft will be shown.")
             except Exception as e:
-                messagebox.showwarning("Email Error", f"Saved request, but email failed: {e}")
+                QMessageBox.warning(self, "Email Error", f"Saved request, but email failed: {e}")
 
-            dialog.destroy()
+            dialog.close()
 
         # Buttons
-        btn_frame = ttk.Frame(dialog)
+        btn_frame = QWidget(dialog)
         btn_frame.pack(fill='x', padx=10, pady=10)
-        ttk.Button(btn_frame, text="Submit Request", command=on_submit).pack(side='left')
-        ttk.Button(btn_frame, text="Cancel", command=dialog.destroy).pack(side='right')
+        QPushButton(btn_frame, text="Submit Request", command=on_submit).pack(side='left')
+        QPushButton(btn_frame, text="Cancel", command=dialog.destroy).pack(side='right')
 
     def send_parts_request_email(self, cm_number, bfm_no, technician_name, items, notes):
         """Send an email to the Parts Coordinator with requested parts. Returns True if sent."""
@@ -3576,36 +3585,36 @@ class AITCMMSSystem:
         """Display monthly summary report in a new window"""
         try:
             # Create dialog window
-            summary_window = tk.Toplevel(self.root)
-            summary_window.title("Monthly PM Summary Report")
+            summary_window = QDialog(self.root)
+            summary_window.setWindowTitle("Monthly PM Summary Report")
             summary_window.geometry("900x700")
-            summary_window.transient(self.root)
+            summary_window.setParent(self.root)
             summary_window.grab_set()
         
             # Create text widget with scrollbar
-            text_frame = ttk.Frame(summary_window)
+            text_frame = QWidget(summary_window)
             text_frame.pack(fill='both', expand=True, padx=10, pady=10)
         
-            text_widget = tk.Text(text_frame, wrap='word', font=('Courier', 10))
-            scrollbar = ttk.Scrollbar(text_frame, orient='vertical', command=text_widget.yview)
+            text_widget = QTextEdit(text_frame, wrap='word', font=('Courier', 10))
+            scrollbar = QScrollArea(text_frame, orient='vertical', command=text_widget.yview)
             text_widget.configure(yscrollcommand=scrollbar.set)
         
             text_widget.pack(side='left', fill='both', expand=True)
             scrollbar.pack(side='right', fill='y')
         
             # Month/Year selection frame
-            selection_frame = ttk.Frame(summary_window)
+            selection_frame = QWidget(summary_window)
             selection_frame.pack(fill='x', padx=10, pady=5)
             
-            ttk.Label(selection_frame, text="Month:").pack(side='left', padx=5)
+            QLabel(selection_frame, text="Month:").pack(side='left', padx=5)
             month_var = tk.StringVar(value=str(datetime.now().month))
-            month_combo = ttk.Combobox(selection_frame, textvariable=month_var, 
+            month_combo = QComboBox(selection_frame, textvariable=month_var, 
                                     values=list(range(1, 13)), width=5, state='readonly')
             month_combo.pack(side='left', padx=5)
         
-            ttk.Label(selection_frame, text="Year:").pack(side='left', padx=5)
+            QLabel(selection_frame, text="Year:").pack(side='left', padx=5)
             year_var = tk.StringVar(value=str(datetime.now().year))
-            year_combo = ttk.Combobox(selection_frame, textvariable=year_var,
+            year_combo = QComboBox(selection_frame, textvariable=year_var,
                                 values=list(range(2020, 2030)), width=8, state='readonly')
             year_combo.pack(side='left', padx=5)
     
@@ -3637,12 +3646,12 @@ class AITCMMSSystem:
                     text_widget.insert('1.0', output)
                 
                 except Exception as e:
-                    messagebox.showerror("Error", f"Failed to generate report: {str(e)}")
+                    QMessageBox.critical(self, "Error", f"Failed to generate report: {str(e)}")
         
             def export_report():
                 """Export report to text file"""
                 try:
-                    filename = filedialog.asksaveasfilename(
+                    filename = QFileDialog.getSaveFileName(self, 
                         title="Export Monthly Summary",
                         defaultextension=".txt",
                         initialname=f"Monthly_Summary_{month_var.get()}_{year_var.get()}.txt",
@@ -3651,9 +3660,9 @@ class AITCMMSSystem:
                     if filename:
                         with open(filename, 'w') as f:
                             f.write(text_widget.get('1.0', 'end'))
-                        messagebox.showinfo("Success", f"Report exported to {filename}")
+                        QMessageBox.information(self, "Success", f"Report exported to {filename}")
                 except Exception as e:
-                    messagebox.showerror("Error", f"Failed to export text report: {str(e)}")
+                    QMessageBox.critical(self, "Error", f"Failed to export text report: {str(e)}")
         
             def export_professional_pdf():
                 """Export professional PDF monthly report"""
@@ -3662,7 +3671,7 @@ class AITCMMSSystem:
                     year = int(year_var.get())
                     
                     # Show progress message
-                    progress_label = ttk.Label(selection_frame, text="Generating professional PDF...", 
+                    progress_label = QLabel(selection_frame, text="Generating professional PDF...", 
                                                foreground='blue')
                     progress_label.pack(side='left', padx=10)
                     summary_window.update()
@@ -3671,10 +3680,10 @@ class AITCMMSSystem:
                     filename = export_professional_monthly_report_pdf(self.conn, month, year)
                     
                     # Remove progress label
-                    progress_label.destroy()
+                    progress_label.close()
                     
                     # Success message with option to open
-                    result = messagebox.askyesno(
+                    result = QMessageBox.question(self, 
                         "Success", 
                         f"Professional monthly report exported!\n\n{filename}\n\nWould you like to open it now?",
                         icon='info'
@@ -3693,27 +3702,27 @@ class AITCMMSSystem:
                             os.system(f'xdg-open "{filename}"')
                 
                 except Exception as e:
-                    messagebox.showerror("Error", f"Failed to generate PDF report:\n\n{str(e)}")
+                    QMessageBox.critical(self, "Error", f"Failed to generate PDF report:\n\n{str(e)}")
         
             # ========== NOW CREATE THE BUTTONS ==========
         
-            ttk.Button(selection_frame, text="Generate Report", 
+            QPushButton(selection_frame, text="Generate Report", 
                     command=generate_report).pack(side='left', padx=10)
         
-            ttk.Button(selection_frame, text="Export Text", 
+            QPushButton(selection_frame, text="Export Text", 
                     command=export_report).pack(side='left', padx=5)
         
-            ttk.Button(selection_frame, text="Export Professional PDF", 
+            QPushButton(selection_frame, text="Export Professional PDF", 
                     command=export_professional_pdf).pack(side='left', padx=5)
         
-            ttk.Button(selection_frame, text="Close", 
+            QPushButton(selection_frame, text="Close", 
                     command=summary_window.destroy).pack(side='right', padx=5)
         
             # Generate initial report for current month
             generate_report()
     
         except Exception as e:
-            messagebox.showerror("Error", f"Failed to show monthly summary: {str(e)}")
+            QMessageBox.critical(self, "Error", f"Failed to show monthly summary: {str(e)}")
     
     
     
@@ -3724,7 +3733,7 @@ class AITCMMSSystem:
         """Set up the color scheme for the entire program"""
     
         # Create style object
-        self.style = ttk.Style()
+        self.style = None  # PyQt5 handles styling differently
     
         # Choose base theme
         self.style.theme_use('clam')  # Good base for customization
@@ -3815,7 +3824,7 @@ class AITCMMSSystem:
             
             if equipment_count == 0:
                 # Database is empty, offer restore
-                result = messagebox.askyesno(
+                result = QMessageBox.question(self, 
                     "Empty Database Detected",
                     "The database appears to be empty.\n\n"
                     "Would you like to restore data from a previous backup?\n\n"
@@ -3834,17 +3843,17 @@ class AITCMMSSystem:
     def create_database_restore_dialog(self):
         """Create dialog to restore database from SharePoint backups - FIXED with proper buttons"""
         if not hasattr(self, 'backup_sync_dir') or not self.backup_sync_dir:
-            messagebox.showerror("Error", "No backup directory configured. Please restart the application.")
+            QMessageBox.critical(self, "Error", "No backup directory configured. Please restart the application.")
             return
     
-        dialog = tk.Toplevel(self.root)
-        dialog.title("Restore Database from Backup")
+        dialog = QDialog(self.root)
+        dialog.setWindowTitle("Restore Database from Backup")
         dialog.geometry("1000x700")  # Made larger
-        dialog.transient(self.root)
+        dialog.setParent(self.root)
         dialog.grab_set()
     
         # Instructions
-        instructions_frame = ttk.LabelFrame(dialog, text="Database Restore", padding=15)
+        instructions_frame = QLabelFrame(dialog, text="Database Restore", padding=15)
         instructions_frame.pack(fill='x', padx=10, pady=5)
         
         instructions_text = f"""Select a backup file to restore your database from SharePoint.
@@ -3857,14 +3866,14 @@ class AITCMMSSystem:
     - All unsaved changes will be lost
     - The application will reload with the restored data"""
     
-        ttk.Label(instructions_frame, text=instructions_text, font=('Arial', 10)).pack(anchor='w')
+        QLabel(instructions_frame, text=instructions_text, font=('Arial', 10)).pack(anchor='w')
     
         # Backup files list
-        files_frame = ttk.LabelFrame(dialog, text="Available Backup Files (Last 15)", padding=10)
+        files_frame = QLabelFrame(dialog, text="Available Backup Files (Last 15)", padding=10)
         files_frame.pack(fill='both', expand=True, padx=10, pady=5)
     
         # Create treeview for backup files
-        self.backup_files_tree = ttk.Treeview(files_frame,
+        self.backup_files_tree = QTreeWidget(files_frame,
                                             columns=('Filename', 'Date Created', 'Size', 'Age'),
                                             show='headings')
     
@@ -3881,8 +3890,8 @@ class AITCMMSSystem:
             self.backup_files_tree.column(col, width=width)
     
         # Scrollbars
-        backup_v_scrollbar = ttk.Scrollbar(files_frame, orient='vertical', command=self.backup_files_tree.yview)
-        backup_h_scrollbar = ttk.Scrollbar(files_frame, orient='horizontal', command=self.backup_files_tree.xview)
+        backup_v_scrollbar = QScrollArea(files_frame, orient='vertical', command=self.backup_files_tree.yview)
+        backup_h_scrollbar = QScrollArea(files_frame, orient='horizontal', command=self.backup_files_tree.xview)
         self.backup_files_tree.configure(yscrollcommand=backup_v_scrollbar.set, xscrollcommand=backup_h_scrollbar.set)
         
         # Pack treeview and scrollbars
@@ -3894,10 +3903,10 @@ class AITCMMSSystem:
         files_frame.grid_columnconfigure(0, weight=1)
         
         # Selection info
-        selection_frame = ttk.LabelFrame(dialog, text="Selected Backup Info", padding=10)
+        selection_frame = QLabelFrame(dialog, text="Selected Backup Info", padding=10)
         selection_frame.pack(fill='x', padx=10, pady=5)
     
-        self.backup_info_label = ttk.Label(selection_frame, text="Loading backup files...", 
+        self.backup_info_label = QLabel(selection_frame, text="Loading backup files...", 
                                         font=('Arial', 10), foreground='blue')
         self.backup_info_label.pack(anchor='w')
     
@@ -3905,30 +3914,30 @@ class AITCMMSSystem:
         self.backup_files_tree.bind('<<TreeviewSelect>>', self.on_backup_file_select)
     
         # Action buttons - FIXED with proper layout
-        button_frame = ttk.Frame(dialog)
+        button_frame = QWidget(dialog)
         button_frame.pack(side='bottom', fill='x', padx=10, pady=15)
     
         # Left side buttons
-        left_buttons = ttk.Frame(button_frame)
+        left_buttons = QWidget(button_frame)
         left_buttons.pack(side='left')
     
-        ttk.Button(left_buttons, text="Refresh List", 
+        QPushButton(left_buttons, text="Refresh List", 
                 command=self.load_backup_files).pack(side='left', padx=5)
-        ttk.Button(left_buttons, text="Preview Backup", 
+        QPushButton(left_buttons, text="Preview Backup", 
                 command=self.preview_selected_backup).pack(side='left', padx=5)
     
         # Right side buttons  
-        right_buttons = ttk.Frame(button_frame)
+        right_buttons = QWidget(button_frame)
         right_buttons.pack(side='right')
     
-        ttk.Button(right_buttons, text="Cancel", 
+        QPushButton(right_buttons, text="Cancel", 
                 command=dialog.destroy).pack(side='right', padx=5)
     
         # Main restore button - prominent in center
-        center_buttons = ttk.Frame(button_frame)
+        center_buttons = QWidget(button_frame)
         center_buttons.pack(expand=True)
         
-        self.restore_button = ttk.Button(center_buttons, text="RESTORE SELECTED BACKUP", 
+        self.restore_button = QPushButton(center_buttons, text="RESTORE SELECTED BACKUP", 
                                         command=self.restore_selected_backup, 
                                         state='disabled',
                                         width=25)
@@ -4061,7 +4070,7 @@ class AITCMMSSystem:
         """Preview selected backup file contents"""
         selected = self.backup_files_tree.selection()
         if not selected:
-            messagebox.showwarning("Warning", "Please select a backup file to preview")
+            QMessageBox.warning(self, "Warning", "Please select a backup file to preview")
             return
     
         try:
@@ -4070,22 +4079,22 @@ class AITCMMSSystem:
             filepath = os.path.join(self.backup_sync_dir, filename)
         
             if not os.path.exists(filepath):
-                messagebox.showerror("Error", f"Backup file not found: {filename}")
+                QMessageBox.critical(self, "Error", f"Backup file not found: {filename}")
                 return
         
             # Create preview dialog
-            preview_dialog = tk.Toplevel(self.root)
-            preview_dialog.title(f"Preview Backup: {filename}")
+            preview_dialog = QDialog(self.root)
+            preview_dialog.setWindowTitle(f"Preview Backup: {filename}")
             preview_dialog.geometry("800x600")
-            preview_dialog.transient(self.root)
+            preview_dialog.setParent(self.root)
             preview_dialog.grab_set()
         
             # Preview text area
-            text_frame = ttk.Frame(preview_dialog)
+            text_frame = QWidget(preview_dialog)
             text_frame.pack(fill='both', expand=True, padx=10, pady=10)
             
-            preview_text = tk.Text(text_frame, wrap='word', font=('Courier', 10))
-            scrollbar = ttk.Scrollbar(text_frame, orient='vertical', command=preview_text.yview)
+            preview_text = QTextEdit(text_frame, wrap='word', font=('Courier', 10))
+            scrollbar = QScrollArea(text_frame, orient='vertical', command=preview_text.yview)
             preview_text.configure(yscrollcommand=scrollbar.set)
             
             preview_text.pack(side='left', fill='both', expand=True)
@@ -4187,16 +4196,16 @@ class AITCMMSSystem:
                 preview_text.config(state='disabled')
         
             # Close button
-            ttk.Button(preview_dialog, text="Close", command=preview_dialog.destroy).pack(pady=10)
+            QPushButton(preview_dialog, text="Close", command=preview_dialog.destroy).pack(pady=10)
         
         except Exception as e:
-            messagebox.showerror("Preview Error", f"Failed to preview backup: {str(e)}")
+            QMessageBox.critical(self, "Preview Error", f"Failed to preview backup: {str(e)}")
 
     def restore_selected_backup(self):
         """Restore the selected backup file"""
         selected = self.backup_files_tree.selection()
         if not selected:
-            messagebox.showwarning("Warning", "Please select a backup file to restore")
+            QMessageBox.warning(self, "Warning", "Please select a backup file to restore")
             return
     
         try:
@@ -4209,7 +4218,7 @@ class AITCMMSSystem:
             source_filepath = os.path.join(self.backup_sync_dir, filename)
         
             if not os.path.exists(source_filepath):
-                messagebox.showerror("Error", f"Backup file not found: {filename}")
+                QMessageBox.critical(self, "Error", f"Backup file not found: {filename}")
                 return
         
             # Confirmation dialog with detailed info
@@ -4230,27 +4239,27 @@ class AITCMMSSystem:
 
     Are you sure you want to proceed?"""
         
-            result = messagebox.askyesno("Confirm Database Restore", confirm_msg, 
+            result = QMessageBox.question(self, "Confirm Database Restore", confirm_msg, 
                                         icon='warning', default='no')
         
             if not result:
                 return
         
             # Create progress dialog
-            progress_dialog = tk.Toplevel(self.root)
-            progress_dialog.title("Restoring Database...")
+            progress_dialog = QDialog(self.root)
+            progress_dialog.setWindowTitle("Restoring Database...")
             progress_dialog.geometry("400x150")
-            progress_dialog.transient(self.root)
+            progress_dialog.setParent(self.root)
             progress_dialog.grab_set()
             
-            ttk.Label(progress_dialog, text="Restoring database from backup...", 
+            QLabel(progress_dialog, text="Restoring database from backup...", 
                     font=('Arial', 12)).pack(pady=20)
         
             progress_var = tk.StringVar(value="Preparing restore...")
-            progress_label = ttk.Label(progress_dialog, textvariable=progress_var)
+            progress_label = QLabel(progress_dialog, textvariable=progress_var)
             progress_label.pack(pady=10)
             
-            progress_bar = ttk.Progressbar(progress_dialog, mode='indeterminate')
+            progress_bar = QProgressBar(progress_dialog, mode='indeterminate')
             progress_bar.pack(pady=10, padx=20, fill='x')
             progress_bar.start()
         
@@ -4311,18 +4320,18 @@ class AITCMMSSystem:
                 self.update_equipment_statistics()
         
             progress_bar.stop()
-            progress_dialog.destroy()
+            progress_dialog.close()
         
             # Close the restore dialog
             if hasattr(self, 'backup_files_tree'):
                 # Find and close the restore dialog
                 for widget in self.root.winfo_children():
-                    if isinstance(widget, tk.Toplevel) and "Restore Database" in widget.title():
-                        widget.destroy()
+                    if isinstance(widget, QDialog) and "Restore Database" in widget.setWindowTitle():
+                        widget.close()
                         break
         
             # Show success message
-            messagebox.showinfo("Restore Complete", 
+            QMessageBox.information(self, "Restore Complete", 
                                f"Database successfully restored from backup!\n\n"
                                f"Restored from: {filename}\n"
                                f"Created: {date_created}\n"
@@ -4337,7 +4346,7 @@ class AITCMMSSystem:
             except:
                 pass
         
-            messagebox.showerror("Restore Error", f"Failed to restore database backup:\n\n{str(e)}")
+            QMessageBox.critical(self, "Restore Error", f"Failed to restore database backup:\n\n{str(e)}")
             print(f"Database restore error: {e}")
 
 
@@ -4348,7 +4357,6 @@ class AITCMMSSystem:
     def add_logo_to_main_window(self):
         """Add AIT logo to the main application window - LEFT SIDE ONLY"""
         try:
-            from tkinter import PhotoImage
             from PIL import Image, ImageTk
             
             # Get the directory where the script is located
@@ -4390,15 +4398,15 @@ class AITCMMSSystem:
                 self.logo_image = ImageTk.PhotoImage(pil_image)
                 
                 # Create logo frame at top left of window
-                logo_frame = ttk.Frame(self.root)
+                logo_frame = QWidget(self.root)
                 logo_frame.pack(side='top', fill='x', padx=10, pady=5)
             
                 # Add logo label (left aligned)
-                logo_label = ttk.Label(logo_frame, image=self.logo_image)
+                logo_label = QLabel(logo_frame, image=self.logo_image)
                 logo_label.pack(side='left')
                 
                 # Optional: Add a subtle separator line below
-                separator = ttk.Separator(self.root, orient='horizontal')
+                separator = QFrame(self.root, orient='horizontal')
                 separator.pack(fill='x', padx=10, pady=2)
             
         except ImportError:
@@ -4415,7 +4423,7 @@ class AITCMMSSystem:
     def on_closing(self):
         """Close application, end user session, and cleanup connections"""
         try:
-            result = messagebox.askyesno(
+            result = QMessageBox.question(self, 
                 "Confirm Exit",
                 "Are you sure you want to close the application?",
                 icon='question'
@@ -4456,11 +4464,11 @@ class AITCMMSSystem:
                 except Exception as e:
                     print(f"WARNING: Unexpected error during cleanup: {e}")
 
-                self.root.destroy()
+                self.root.close()
 
         except Exception as e:
             print(f"Error during closing: {e}")
-            self.root.destroy()
+            self.root.close()
 
     # Backup functions removed - using PostgreSQL only
 
@@ -4531,22 +4539,22 @@ class AITCMMSSystem:
         """Dialog to create custom PM template for specific equipment"""
         print("DEBUG: Starting create_custom_pm_template_dialog method")  # Add this line
     
-        dialog = tk.Toplevel(self.root)
+        dialog = QDialog(self.root)
         """Dialog to create custom PM template for specific equipment"""
-        dialog = tk.Toplevel(self.root)
-        dialog.title("Create Custom PM Template")
+        dialog = QDialog(self.root)
+        dialog.setWindowTitle("Create Custom PM Template")
         dialog.geometry("800x750")
-        dialog.transient(self.root)
+        dialog.setParent(self.root)
         dialog.grab_set()
 
         # Equipment selection
-        header_frame = ttk.LabelFrame(dialog, text="Template Information", padding=10)
+        header_frame = QLabelFrame(dialog, text="Template Information", padding=10)
         header_frame.pack(fill='x', padx=10, pady=5)
 
         # BFM Equipment selection
-        ttk.Label(header_frame, text="BFM Equipment Number:").grid(row=0, column=0, sticky='w', pady=5)
+        QLabel(header_frame, text="BFM Equipment Number:").grid(row=0, column=0, sticky='w', pady=5)
         bfm_var = tk.StringVar()
-        bfm_combo = ttk.Combobox(header_frame, textvariable=bfm_var, width=25)
+        bfm_combo = QComboBox(header_frame, textvariable=bfm_var, width=25)
         bfm_combo.grid(row=0, column=1, sticky='w', padx=5, pady=5)
 
         # Populate equipment list
@@ -4557,59 +4565,59 @@ class AITCMMSSystem:
                             for bfm, desc in equipment_list]
 
         # Template name
-        ttk.Label(header_frame, text="Template Name:").grid(row=0, column=2, sticky='w', pady=5, padx=(20,5))
+        QLabel(header_frame, text="Template Name:").grid(row=0, column=2, sticky='w', pady=5, padx=(20,5))
         template_name_var = tk.StringVar()
-        ttk.Entry(header_frame, textvariable=template_name_var, width=25).grid(row=0, column=3, sticky='w', padx=5, pady=5)
+        QLineEdit(header_frame, textvariable=template_name_var, width=25).grid(row=0, column=3, sticky='w', padx=5, pady=5)
 
         # PM Type
-        ttk.Label(header_frame, text="PM Type:").grid(row=1, column=0, sticky='w', pady=5)
+        QLabel(header_frame, text="PM Type:").grid(row=1, column=0, sticky='w', pady=5)
         pm_type_var = tk.StringVar(value='Annual')
-        pm_type_combo = ttk.Combobox(header_frame, textvariable=pm_type_var, 
+        pm_type_combo = QComboBox(header_frame, textvariable=pm_type_var, 
                                     values=['Monthly', 'Six Month', 'Annual'], width=22)
         pm_type_combo.grid(row=1, column=1, sticky='w', padx=5, pady=5)
 
         # Estimated hours
-        ttk.Label(header_frame, text="Estimated Hours:").grid(row=1, column=2, sticky='w', pady=5, padx=(20,5))
+        QLabel(header_frame, text="Estimated Hours:").grid(row=1, column=2, sticky='w', pady=5, padx=(20,5))
         est_hours_var = tk.StringVar(value="1.0")
-        ttk.Entry(header_frame, textvariable=est_hours_var, width=10).grid(row=1, column=3, sticky='w', padx=5, pady=5)
+        QLineEdit(header_frame, textvariable=est_hours_var, width=10).grid(row=1, column=3, sticky='w', padx=5, pady=5)
 
         # Custom checklist section
-        checklist_frame = ttk.LabelFrame(dialog, text="Custom PM Checklist", padding=10)
+        checklist_frame = QLabelFrame(dialog, text="Custom PM Checklist", padding=10)
         checklist_frame.pack(fill='both', expand=True, padx=10, pady=5)
 
         # Checklist controls
-        controls_subframe = ttk.Frame(checklist_frame)
+        controls_subframe = QWidget(checklist_frame)
         controls_subframe.pack(fill='x', pady=5)
     
         # Checklist listbox with scrollbar
-        list_frame = ttk.Frame(checklist_frame)
+        list_frame = QWidget(checklist_frame)
         list_frame.pack(fill='both', expand=True, pady=5)
 
-        checklist_listbox = tk.Listbox(list_frame, height=15, font=('Arial', 9))
-        list_scrollbar = ttk.Scrollbar(list_frame, orient='vertical', command=checklist_listbox.yview)
+        checklist_listbox = QListWidget(list_frame, height=15, font=('Arial', 9))
+        list_scrollbar = QScrollArea(list_frame, orient='vertical', command=checklist_listbox.yview)
         checklist_listbox.configure(yscrollcommand=list_scrollbar.set)
 
         checklist_listbox.pack(side='left', fill='both', expand=True)
         list_scrollbar.pack(side='right', fill='y')
 
         # Step editing
-        edit_frame = ttk.LabelFrame(checklist_frame, text="Edit Selected Step", padding=5)
+        edit_frame = QLabelFrame(checklist_frame, text="Edit Selected Step", padding=5)
         edit_frame.pack(fill='x', pady=5)
 
         step_text_var = tk.StringVar()
-        step_entry = ttk.Entry(edit_frame, textvariable=step_text_var, width=80)
+        step_entry = QLineEdit(edit_frame, textvariable=step_text_var, width=80)
         step_entry.pack(side='left', fill='x', expand=True, padx=5)
 
         # Special instructions and safety notes
-        notes_frame = ttk.LabelFrame(dialog, text="Additional Information", padding=10)
+        notes_frame = QLabelFrame(dialog, text="Additional Information", padding=10)
         notes_frame.pack(fill='x', padx=10, pady=5)
 
-        ttk.Label(notes_frame, text="Special Instructions:").grid(row=0, column=0, sticky='nw', pady=2)
-        special_instructions_text = tk.Text(notes_frame, height=3, width=50)
+        QLabel(notes_frame, text="Special Instructions:").grid(row=0, column=0, sticky='nw', pady=2)
+        special_instructions_text = QTextEdit(notes_frame, height=3, width=50)
         special_instructions_text.grid(row=0, column=1, sticky='ew', padx=5, pady=2)
 
-        ttk.Label(notes_frame, text="Safety Notes:").grid(row=1, column=0, sticky='nw', pady=2)
-        safety_notes_text = tk.Text(notes_frame, height=3, width=50)
+        QLabel(notes_frame, text="Safety Notes:").grid(row=1, column=0, sticky='nw', pady=2)
+        safety_notes_text = QTextEdit(notes_frame, height=3, width=50)
         safety_notes_text.grid(row=1, column=1, sticky='ew', padx=5, pady=2)
 
         notes_frame.grid_columnconfigure(1, weight=1)
@@ -4680,11 +4688,11 @@ class AITCMMSSystem:
             try:
                 # Validate inputs
                 if not bfm_var.get():
-                    messagebox.showerror("Error", "Please select equipment")
+                    QMessageBox.critical(self, "Error", "Please select equipment")
                     return
             
                 if not template_name_var.get().strip():
-                    messagebox.showerror("Error", "Please enter template name")
+                    QMessageBox.critical(self, "Error", "Please enter template name")
                     return
             
                 # Extract BFM number from combo selection
@@ -4698,7 +4706,7 @@ class AITCMMSSystem:
                     checklist_items.append(step_content)
             
                 if not checklist_items:
-                    messagebox.showerror("Error", "Please add at least one checklist item")
+                    QMessageBox.critical(self, "Error", "Please add at least one checklist item")
                     return
             
                 # Save to database
@@ -4719,12 +4727,12 @@ class AITCMMSSystem:
                 ))
             
                 self.conn.commit()
-                messagebox.showinfo("Success", "Custom PM template created successfully!")
-                dialog.destroy()
+                QMessageBox.information(self, "Success", "Custom PM template created successfully!")
+                dialog.close()
                 self.load_pm_templates()
             
             except Exception as e:
-                messagebox.showerror("Error", f"Failed to save template: {str(e)}")
+                QMessageBox.critical(self, "Error", f"Failed to save template: {str(e)}")
 
         def on_step_select(event):
             selection = checklist_listbox.curselection()
@@ -4734,13 +4742,13 @@ class AITCMMSSystem:
                 step_text_var.set(step_content)
 
         # NOW CREATE BUTTONS - AFTER ALL FUNCTIONS ARE DEFINED
-        ttk.Button(controls_subframe, text="Add Step", command=add_checklist_step).pack(side='left', padx=5)
-        ttk.Button(controls_subframe, text="Remove Step", command=remove_checklist_step).pack(side='left', padx=5)
-        ttk.Button(controls_subframe, text="Load Default Template", command=load_default_template).pack(side='left', padx=5)
-        ttk.Button(controls_subframe, text="Move Up", command=move_step_up).pack(side='left', padx=5)
-        ttk.Button(controls_subframe, text="Move Down", command=move_step_down).pack(side='left', padx=5)
+        QPushButton(controls_subframe, text="Add Step", command=add_checklist_step).pack(side='left', padx=5)
+        QPushButton(controls_subframe, text="Remove Step", command=remove_checklist_step).pack(side='left', padx=5)
+        QPushButton(controls_subframe, text="Load Default Template", command=load_default_template).pack(side='left', padx=5)
+        QPushButton(controls_subframe, text="Move Up", command=move_step_up).pack(side='left', padx=5)
+        QPushButton(controls_subframe, text="Move Down", command=move_step_down).pack(side='left', padx=5)
 
-        ttk.Button(edit_frame, text="Update Step", command=update_selected_step).pack(side='right', padx=5)
+        QPushButton(edit_frame, text="Update Step", command=update_selected_step).pack(side='right', padx=5)
 
         # Bind listbox selection
         checklist_listbox.bind('<<ListboxSelect>>', on_step_select)
@@ -4749,17 +4757,17 @@ class AITCMMSSystem:
         load_default_template()
 
         # Save and Cancel buttons
-        button_frame = ttk.Frame(dialog)
+        button_frame = QWidget(dialog)
         button_frame.pack(side='bottom', fill='x', padx=10, pady=10)
 
-        ttk.Button(button_frame, text="Save Template", command=save_template).pack(side='left', padx=5)
-        ttk.Button(button_frame, text="Cancel", command=dialog.destroy).pack(side='right', padx=5)
+        QPushButton(button_frame, text="Save Template", command=save_template).pack(side='left', padx=5)
+        QPushButton(button_frame, text="Cancel", command=dialog.destroy).pack(side='right', padx=5)
 
     def edit_pm_template_dialog(self):
         """Edit existing PM template with full functionality"""
         selected = self.templates_tree.selection()
         if not selected:
-            messagebox.showwarning("Warning", "Please select a template to edit")
+            QMessageBox.warning(self, "Warning", "Please select a template to edit")
             return
 
         # Get selected template data
@@ -4778,7 +4786,7 @@ class AITCMMSSystem:
 
         template_data = cursor.fetchone()
         if not template_data:
-            messagebox.showerror("Error", "Template not found")
+            QMessageBox.critical(self, "Error", "Template not found")
             return
 
         # Extract template data
@@ -4792,77 +4800,77 @@ class AITCMMSSystem:
             orig_checklist_items = []
 
         # Create edit dialog (similar structure to create dialog)
-        dialog = tk.Toplevel(self.root)
-        dialog.title(f"Edit PM Template - {template_name}")
+        dialog = QDialog(self.root)
+        dialog.setWindowTitle(f"Edit PM Template - {template_name}")
         dialog.geometry("800x750")
-        dialog.transient(self.root)
+        dialog.setParent(self.root)
         dialog.grab_set()
 
         # Template information (pre-populated)
-        header_frame = ttk.LabelFrame(dialog, text="Template Information", padding=10)
+        header_frame = QLabelFrame(dialog, text="Template Information", padding=10)
         header_frame.pack(fill='x', padx=10, pady=5)
 
         # BFM Equipment (read-only)
-        ttk.Label(header_frame, text="BFM Equipment Number:").grid(row=0, column=0, sticky='w', pady=5)
+        QLabel(header_frame, text="BFM Equipment Number:").grid(row=0, column=0, sticky='w', pady=5)
         bfm_var = tk.StringVar(value=orig_bfm_no)
-        bfm_label = ttk.Label(header_frame, text=orig_bfm_no, font=('Arial', 10, 'bold'))
+        bfm_label = QLabel(header_frame, text=orig_bfm_no, font=('Arial', 10, 'bold'))
         bfm_label.grid(row=0, column=1, sticky='w', padx=5, pady=5)
 
         # Template name (editable)
-        ttk.Label(header_frame, text="Template Name:").grid(row=0, column=2, sticky='w', pady=5, padx=(20,5))
+        QLabel(header_frame, text="Template Name:").grid(row=0, column=2, sticky='w', pady=5, padx=(20,5))
         template_name_var = tk.StringVar(value=orig_name)
-        ttk.Entry(header_frame, textvariable=template_name_var, width=25).grid(row=0, column=3, sticky='w', padx=5, pady=5)
+        QLineEdit(header_frame, textvariable=template_name_var, width=25).grid(row=0, column=3, sticky='w', padx=5, pady=5)
 
         # PM Type (editable)
-        ttk.Label(header_frame, text="PM Type:").grid(row=1, column=0, sticky='w', pady=5)
+        QLabel(header_frame, text="PM Type:").grid(row=1, column=0, sticky='w', pady=5)
         pm_type_var = tk.StringVar(value=orig_pm_type)
-        pm_type_combo = ttk.Combobox(header_frame, textvariable=pm_type_var, 
+        pm_type_combo = QComboBox(header_frame, textvariable=pm_type_var, 
                                 values=['Monthly', 'Six Month', 'Annual'], width=22)
         pm_type_combo.grid(row=1, column=1, sticky='w', padx=5, pady=5)
 
         # Estimated hours (editable)
-        ttk.Label(header_frame, text="Estimated Hours:").grid(row=1, column=2, sticky='w', pady=5, padx=(20,5))
+        QLabel(header_frame, text="Estimated Hours:").grid(row=1, column=2, sticky='w', pady=5, padx=(20,5))
         est_hours_var = tk.StringVar(value=str(orig_hours))
-        ttk.Entry(header_frame, textvariable=est_hours_var, width=10).grid(row=1, column=3, sticky='w', padx=5, pady=5)
+        QLineEdit(header_frame, textvariable=est_hours_var, width=10).grid(row=1, column=3, sticky='w', padx=5, pady=5)
 
         # Custom checklist section
-        checklist_frame = ttk.LabelFrame(dialog, text="Edit PM Checklist", padding=10)
+        checklist_frame = QLabelFrame(dialog, text="Edit PM Checklist", padding=10)
         checklist_frame.pack(fill='both', expand=True, padx=10, pady=5)
 
         # Checklist controls
-        controls_subframe = ttk.Frame(checklist_frame)
+        controls_subframe = QWidget(checklist_frame)
         controls_subframe.pack(fill='x', pady=5)
 
         # Checklist listbox with scrollbar
-        list_frame = ttk.Frame(checklist_frame)
+        list_frame = QWidget(checklist_frame)
         list_frame.pack(fill='both', expand=True, pady=5)
 
-        checklist_listbox = tk.Listbox(list_frame, height=15, font=('Arial', 9))
-        list_scrollbar = ttk.Scrollbar(list_frame, orient='vertical', command=checklist_listbox.yview)
+        checklist_listbox = QListWidget(list_frame, height=15, font=('Arial', 9))
+        list_scrollbar = QScrollArea(list_frame, orient='vertical', command=checklist_listbox.yview)
         checklist_listbox.configure(yscrollcommand=list_scrollbar.set)
 
         checklist_listbox.pack(side='left', fill='both', expand=True)
         list_scrollbar.pack(side='right', fill='y')
 
         # Step editing
-        edit_frame = ttk.LabelFrame(checklist_frame, text="Edit Selected Step", padding=5)
+        edit_frame = QLabelFrame(checklist_frame, text="Edit Selected Step", padding=5)
         edit_frame.pack(fill='x', pady=5)
 
         step_text_var = tk.StringVar()
-        step_entry = ttk.Entry(edit_frame, textvariable=step_text_var, width=80)
+        step_entry = QLineEdit(edit_frame, textvariable=step_text_var, width=80)
         step_entry.pack(side='left', fill='x', expand=True, padx=5)
 
         # Special instructions and safety notes (pre-populated)
-        notes_frame = ttk.LabelFrame(dialog, text="Additional Information", padding=10)
+        notes_frame = QLabelFrame(dialog, text="Additional Information", padding=10)
         notes_frame.pack(fill='x', padx=10, pady=5)
 
-        ttk.Label(notes_frame, text="Special Instructions:").grid(row=0, column=0, sticky='nw', pady=2)
-        special_instructions_text = tk.Text(notes_frame, height=3, width=50)
+        QLabel(notes_frame, text="Special Instructions:").grid(row=0, column=0, sticky='nw', pady=2)
+        special_instructions_text = QTextEdit(notes_frame, height=3, width=50)
         special_instructions_text.grid(row=0, column=1, sticky='ew', padx=5, pady=2)
         special_instructions_text.insert('1.0', orig_instructions or '')
 
-        ttk.Label(notes_frame, text="Safety Notes:").grid(row=1, column=0, sticky='nw', pady=2)
-        safety_notes_text = tk.Text(notes_frame, height=3, width=50)
+        QLabel(notes_frame, text="Safety Notes:").grid(row=1, column=0, sticky='nw', pady=2)
+        safety_notes_text = QTextEdit(notes_frame, height=3, width=50)
         safety_notes_text.grid(row=1, column=1, sticky='ew', padx=5, pady=2)
         safety_notes_text.insert('1.0', orig_safety or '')
 
@@ -4925,7 +4933,7 @@ class AITCMMSSystem:
             try:
                 # Validate inputs
                 if not template_name_var.get().strip():
-                    messagebox.showerror("Error", "Please enter template name")
+                    QMessageBox.critical(self, "Error", "Please enter template name")
                     return
 
                 # Get updated checklist items
@@ -4936,7 +4944,7 @@ class AITCMMSSystem:
                     checklist_items.append(step_content)
 
                 if not checklist_items:
-                    messagebox.showerror("Error", "Please add at least one checklist item")
+                    QMessageBox.critical(self, "Error", "Please add at least one checklist item")
                     return
 
                 # Update database
@@ -4962,12 +4970,12 @@ class AITCMMSSystem:
                 ))
 
                 self.conn.commit()
-                messagebox.showinfo("Success", "PM template updated successfully!")
-                dialog.destroy()
+                QMessageBox.information(self, "Success", "PM template updated successfully!")
+                dialog.close()
                 self.load_pm_templates()
 
             except Exception as e:
-                messagebox.showerror("Error", f"Failed to update template: {str(e)}")
+                QMessageBox.critical(self, "Error", f"Failed to update template: {str(e)}")
 
         def on_step_select(event):
             selection = checklist_listbox.curselection()
@@ -4977,12 +4985,12 @@ class AITCMMSSystem:
                 step_text_var.set(step_content)
 
         # Create buttons
-        ttk.Button(controls_subframe, text="Add Step", command=add_checklist_step).pack(side='left', padx=5)
-        ttk.Button(controls_subframe, text="Remove Step", command=remove_checklist_step).pack(side='left', padx=5)
-        ttk.Button(controls_subframe, text="Move Up", command=move_step_up).pack(side='left', padx=5)
-        ttk.Button(controls_subframe, text="Move Down", command=move_step_down).pack(side='left', padx=5)
+        QPushButton(controls_subframe, text="Add Step", command=add_checklist_step).pack(side='left', padx=5)
+        QPushButton(controls_subframe, text="Remove Step", command=remove_checklist_step).pack(side='left', padx=5)
+        QPushButton(controls_subframe, text="Move Up", command=move_step_up).pack(side='left', padx=5)
+        QPushButton(controls_subframe, text="Move Down", command=move_step_down).pack(side='left', padx=5)
 
-        ttk.Button(edit_frame, text="Update Step", command=update_selected_step).pack(side='right', padx=5)
+        QPushButton(edit_frame, text="Update Step", command=update_selected_step).pack(side='right', padx=5)
 
         # Bind listbox selection
         checklist_listbox.bind('<<ListboxSelect>>', on_step_select)
@@ -4993,17 +5001,17 @@ class AITCMMSSystem:
             checklist_listbox.insert('end', f"{i}. {item}")
 
         # Save and Cancel buttons
-        button_frame = ttk.Frame(dialog)
+        button_frame = QWidget(dialog)
         button_frame.pack(side='bottom', fill='x', padx=10, pady=10)
 
-        ttk.Button(button_frame, text="Save Changes", command=save_changes).pack(side='left', padx=5)
-        ttk.Button(button_frame, text="Cancel", command=dialog.destroy).pack(side='right', padx=5)
+        QPushButton(button_frame, text="Save Changes", command=save_changes).pack(side='left', padx=5)
+        QPushButton(button_frame, text="Cancel", command=dialog.destroy).pack(side='right', padx=5)
 
     def preview_pm_template(self):
         """Preview selected PM template"""
         selected = self.templates_tree.selection()
         if not selected:
-            messagebox.showwarning("Warning", "Please select a template to preview")
+            QMessageBox.warning(self, "Warning", "Please select a template to preview")
             return
     
         item = self.templates_tree.item(selected[0])
@@ -5021,18 +5029,18 @@ class AITCMMSSystem:
     
         template_data = cursor.fetchone()
         if not template_data:
-            messagebox.showerror("Error", "Template not found")
+            QMessageBox.critical(self, "Error", "Template not found")
             return
     
         # Create preview dialog
-        preview_dialog = tk.Toplevel(self.root)
-        preview_dialog.title(f"PM Template Preview - {bfm_no}")
+        preview_dialog = QDialog(self.root)
+        preview_dialog.setWindowTitle(f"PM Template Preview - {bfm_no}")
         preview_dialog.geometry("700x600")
-        preview_dialog.transient(self.root)
+        preview_dialog.setParent(self.root)
         preview_dialog.grab_set()
     
         # Template info
-        info_frame = ttk.LabelFrame(preview_dialog, text="Template Information", padding=10)
+        info_frame = QLabelFrame(preview_dialog, text="Template Information", padding=10)
         info_frame.pack(fill='x', padx=10, pady=5)
     
         info_text = f"Equipment: {bfm_no} - {template_data[9] or 'N/A'}\n"
@@ -5040,14 +5048,14 @@ class AITCMMSSystem:
         info_text += f"PM Type: {template_data[3]}\n"
         info_text += f"Estimated Hours: {template_data[7]:.1f}h"
     
-        ttk.Label(info_frame, text=info_text, font=('Arial', 10)).pack(anchor='w')
+        QLabel(info_frame, text=info_text, font=('Arial', 10)).pack(anchor='w')
     
         # Checklist preview
-        checklist_frame = ttk.LabelFrame(preview_dialog, text="PM Checklist", padding=10)
+        checklist_frame = QLabelFrame(preview_dialog, text="PM Checklist", padding=10)
         checklist_frame.pack(fill='both', expand=True, padx=10, pady=5)
     
-        checklist_text = tk.Text(checklist_frame, wrap='word', font=('Arial', 10))
-        scrollbar = ttk.Scrollbar(checklist_frame, orient='vertical', command=checklist_text.yview)
+        checklist_text = QTextEdit(checklist_frame, wrap='word', font=('Arial', 10))
+        scrollbar = QScrollArea(checklist_frame, orient='vertical', command=checklist_text.yview)
         checklist_text.configure(yscrollcommand=scrollbar.set)
         
         # Format checklist content
@@ -5075,16 +5083,16 @@ class AITCMMSSystem:
         scrollbar.pack(side='right', fill='y')
     
         # Buttons
-        button_frame = ttk.Frame(preview_dialog)
+        button_frame = QWidget(preview_dialog)
         button_frame.pack(side='bottom', fill='x', padx=10, pady=10)
     
-        ttk.Button(button_frame, text="Close", command=preview_dialog.destroy).pack(side='right', padx=5)
+        QPushButton(button_frame, text="Close", command=preview_dialog.destroy).pack(side='right', padx=5)
 
     def delete_pm_template(self):
         """Delete selected PM template with enhanced confirmation"""
         selected = self.templates_tree.selection()
         if not selected:
-            messagebox.showwarning("Warning", "Please select a template to delete")
+            QMessageBox.warning(self, "Warning", "Please select a template to delete")
             return
 
         item = self.templates_tree.item(selected[0])
@@ -5094,7 +5102,7 @@ class AITCMMSSystem:
         steps_count = item['values'][3]
 
         # Enhanced confirmation dialog
-        result = messagebox.askyesno("Confirm Delete", 
+        result = QMessageBox.question(self, "Confirm Delete", 
                                 f"Delete PM template '{template_name}'?\n\n"
                                 f"Equipment: {bfm_no}\n"
                                 f"PM Type: {pm_type}\n"
@@ -5111,18 +5119,18 @@ class AITCMMSSystem:
                 ''', (bfm_no, template_name))
 
                 self.conn.commit()
-                messagebox.showinfo("Success", f"Template '{template_name}' deleted successfully!")
+                QMessageBox.information(self, "Success", f"Template '{template_name}' deleted successfully!")
                 self.load_pm_templates()
                 self.update_status(f"Deleted PM template: {template_name}")
 
             except Exception as e:
-                messagebox.showerror("Error", f"Failed to delete template: {str(e)}")
+                QMessageBox.critical(self, "Error", f"Failed to delete template: {str(e)}")
 
     def export_custom_template_pdf(self):
         """Export custom template as PDF form"""
         selected = self.templates_tree.selection()
         if not selected:
-            messagebox.showwarning("Warning", "Please select a template to export")
+            QMessageBox.warning(self, "Warning", "Please select a template to export")
             return
 
         item = self.templates_tree.item(selected[0])
@@ -5145,7 +5153,7 @@ class AITCMMSSystem:
             equipment_data = cursor.fetchone()
 
             if not equipment_data:
-                messagebox.showerror("Error", "Equipment not found")
+                QMessageBox.critical(self, "Error", "Equipment not found")
                 return
 
             # Load default checklist items
@@ -5186,7 +5194,7 @@ class AITCMMSSystem:
 
             template_data = cursor.fetchone()
             if not template_data:
-                messagebox.showerror("Error", f"Template not found for BFM: {bfm_no}, Name: {template_name}\n\nPlease check that the template exists in the database.")
+                QMessageBox.critical(self, "Error", f"Template not found for BFM: {bfm_no}, Name: {template_name}\n\nPlease check that the template exists in the database.")
                 return
 
         try:
@@ -5196,10 +5204,10 @@ class AITCMMSSystem:
             # Create custom PDF using the template data
             self.create_custom_pm_template_pdf(filename, template_data)
 
-            messagebox.showinfo("Success", f"PM template exported to: {filename}")
+            QMessageBox.information(self, "Success", f"PM template exported to: {filename}")
 
         except Exception as e:
-            messagebox.showerror("Error", f"Failed to export template: {str(e)}")
+            QMessageBox.critical(self, "Error", f"Failed to export template: {str(e)}")
 
     def create_custom_pm_template_pdf(self, filename, template_data):
         """Create PDF with custom PM template"""
@@ -5484,28 +5492,28 @@ class AITCMMSSystem:
 
     def create_equipment_pm_lookup_with_templates(self):
         """Enhanced equipment lookup that shows custom templates"""
-        dialog = tk.Toplevel(self.root)
-        dialog.title("Equipment PM Schedule & Templates")
+        dialog = QDialog(self.root)
+        dialog.setWindowTitle("Equipment PM Schedule & Templates")
         dialog.geometry("900x700")
-        dialog.transient(self.root)
+        dialog.setParent(self.root)
         dialog.grab_set()
     
         # Equipment search
-        search_frame = ttk.LabelFrame(dialog, text="Equipment Search", padding=15)
+        search_frame = QLabelFrame(dialog, text="Equipment Search", padding=15)
         search_frame.pack(fill='x', padx=10, pady=5)
     
-        ttk.Label(search_frame, text="BFM Equipment Number:", font=('Arial', 10, 'bold')).grid(row=0, column=0, sticky='w', pady=5)
+        QLabel(search_frame, text="BFM Equipment Number:", font=('Arial', 10, 'bold')).grid(row=0, column=0, sticky='w', pady=5)
     
         bfm_var = tk.StringVar()
-        bfm_entry = ttk.Entry(search_frame, textvariable=bfm_var, width=20, font=('Arial', 11))
+        bfm_entry = QLineEdit(search_frame, textvariable=bfm_var, width=20, font=('Arial', 11))
         bfm_entry.grid(row=0, column=1, padx=10, pady=5)
     
-        search_btn = ttk.Button(search_frame, text="Look Up Equipment", 
+        search_btn = QPushButton(search_frame, text="Look Up Equipment", 
                             command=lambda: self.lookup_equipment_with_templates(bfm_var.get().strip(), results_frame))
         search_btn.grid(row=0, column=2, padx=10, pady=5)
     
         # Results frame
-        results_frame = ttk.LabelFrame(dialog, text="Equipment Information & Templates", padding=10)
+        results_frame = QLabelFrame(dialog, text="Equipment Information & Templates", padding=10)
         results_frame.pack(fill='both', expand=True, padx=10, pady=5)
     
         bfm_entry.focus_set()
@@ -5514,7 +5522,7 @@ class AITCMMSSystem:
     def lookup_equipment_with_templates(self, bfm_no, parent_frame):
         """Lookup equipment with custom template information"""
         if not bfm_no:
-            messagebox.showwarning("Warning", "Please enter a BFM Equipment Number")
+            QMessageBox.warning(self, "Warning", "Please enter a BFM Equipment Number")
             return
     
         try:
@@ -5522,7 +5530,7 @@ class AITCMMSSystem:
         
             # Clear previous results
             for widget in parent_frame.winfo_children():
-                widget.destroy()
+                widget.close()
         
             # Get equipment info
             cursor.execute('''
@@ -5533,7 +5541,7 @@ class AITCMMSSystem:
         
             equipment_data = cursor.fetchone()
             if not equipment_data:
-                error_label = ttk.Label(parent_frame, 
+                error_label = QLabel(parent_frame, 
                                     text=f"Equipment '{bfm_no}' not found in database",
                                     font=('Arial', 12, 'bold'), foreground='red')
                 error_label.pack(pady=20)
@@ -5545,7 +5553,7 @@ class AITCMMSSystem:
             header_text += f"Location: {equipment_data[2] or 'N/A'}\n"
             header_text += f"Status: {equipment_data[3] or 'Active'}"
         
-            header_label = ttk.Label(parent_frame, text=header_text, font=('Arial', 10))
+            header_label = QLabel(parent_frame, text=header_text, font=('Arial', 10))
             header_label.pack(pady=10)
         
             # Get custom templates
@@ -5559,7 +5567,7 @@ class AITCMMSSystem:
             templates = cursor.fetchall()
         
             if templates:
-                templates_frame = ttk.LabelFrame(parent_frame, text="Custom PM Templates", padding=10)
+                templates_frame = QLabelFrame(parent_frame, text="Custom PM Templates", padding=10)
                 templates_frame.pack(fill='x', pady=10)
             
                 for template in templates:
@@ -5571,9 +5579,9 @@ class AITCMMSSystem:
                         step_count = 0
                 
                     template_text = f"- {name} ({pm_type} PM) - {step_count} steps, {est_hours:.1f}h estimated"
-                    ttk.Label(templates_frame, text=template_text, font=('Arial', 9)).pack(anchor='w')
+                    QLabel(templates_frame, text=template_text, font=('Arial', 9)).pack(anchor='w')
             else:
-                no_templates_label = ttk.Label(parent_frame, 
+                no_templates_label = QLabel(parent_frame, 
                                             text="No custom PM templates found for this equipment",
                                             font=('Arial', 10), foreground='orange')
                 no_templates_label.pack(pady=10)
@@ -5582,7 +5590,7 @@ class AITCMMSSystem:
             self.lookup_equipment_pm_schedule(bfm_no, parent_frame)
         
         except Exception as e:
-            error_label = ttk.Label(parent_frame, 
+            error_label = QLabel(parent_frame, 
                                 text=f"Error looking up equipment: {str(e)}", 
                                 font=('Arial', 10), foreground='red')
             error_label.pack(pady=20)
@@ -5665,17 +5673,17 @@ class AITCMMSSystem:
                     continue
         
             self.conn.commit()
-            messagebox.showinfo("Success", f"Updated {updated_count} records with spread dates!")
+            QMessageBox.information(self, "Success", f"Updated {updated_count} records with spread dates!")
         
         except Exception as e:
-            messagebox.showerror("Error", f"Failed to update database: {str(e)}")
+            QMessageBox.critical(self, "Error", f"Failed to update database: {str(e)}")
     
     
     def standardize_all_database_dates(self):
         """Standardize all dates in the database to YYYY-MM-DD format"""
         
         # Confirmation dialog
-        result = messagebox.askyesno(
+        result = QMessageBox.question(self, 
             "Confirm Date Standardization",
             "This will standardize ALL dates in the database to YYYY-MM-DD format.\n\n"
             "Tables affected:\n"
@@ -5694,20 +5702,20 @@ class AITCMMSSystem:
         
         try:
             # Create progress dialog
-            progress_dialog = tk.Toplevel(self.root)
-            progress_dialog.title("Standardizing Dates...")
+            progress_dialog = QDialog(self.root)
+            progress_dialog.setWindowTitle("Standardizing Dates...")
             progress_dialog.geometry("400x150")
-            progress_dialog.transient(self.root)
+            progress_dialog.setParent(self.root)
             progress_dialog.grab_set()
             
-            ttk.Label(progress_dialog, text="Standardizing dates in database...", 
+            QLabel(progress_dialog, text="Standardizing dates in database...", 
                      font=('Arial', 12)).pack(pady=20)
             
             progress_var = tk.StringVar(value="Initializing...")
-            progress_label = ttk.Label(progress_dialog, textvariable=progress_var)
+            progress_label = QLabel(progress_dialog, textvariable=progress_var)
             progress_label.pack(pady=10)
             
-            progress_bar = ttk.Progressbar(progress_dialog, mode='indeterminate')
+            progress_bar = QProgressBar(progress_dialog, mode='indeterminate')
             progress_bar.pack(pady=10, padx=20, fill='x')
             progress_bar.start()
             
@@ -5722,7 +5730,7 @@ class AITCMMSSystem:
             total_updated, errors = standardizer.standardize_all_dates()
             
             progress_bar.stop()
-            progress_dialog.destroy()
+            progress_dialog.close()
             
             # Show results
             if errors:
@@ -5731,10 +5739,10 @@ class AITCMMSSystem:
                 if len(errors) > 10:
                     error_msg += f"\n... and {len(errors) - 10} more errors"
                 
-                messagebox.showwarning("Standardization Complete (With Errors)", 
+                QMessageBox.warning(self, "Standardization Complete (With Errors)", 
                                      f"Updated {total_updated} records.\n\n{error_msg}")
             else:
-                messagebox.showinfo("Success", 
+                QMessageBox.information(self, "Success", 
                                   f"Date standardization completed successfully!\n\n"
                                   f"Updated {total_updated} date records to YYYY-MM-DD format.\n\n"
                                   f"All dates are now standardized.")
@@ -5751,8 +5759,8 @@ class AITCMMSSystem:
             
         except Exception as e:
             if 'progress_dialog' in locals():
-                progress_dialog.destroy()
-            messagebox.showerror("Error", f"Failed to standardize dates: {str(e)}")
+                progress_dialog.close()
+            QMessageBox.critical(self, "Error", f"Failed to standardize dates: {str(e)}")
 
     def format_date_display(self, date_str):
         """Format date for consistent display"""
@@ -5770,7 +5778,9 @@ class AITCMMSSystem:
         """Get current date in standard format"""
         return datetime.now().strftime('%Y-%m-%d')
     
-    def __init__(self, root):
+    def __init__(self):
+        super().__init__()
+        self.root = self  # Compatibility
         self.root = root
         # === NEON CLOUD DATABASE CONFIGURATION ===
         self.DB_CONFIG = {
@@ -5785,7 +5795,7 @@ class AITCMMSSystem:
         self.session_start_time = datetime.now()
         self.session_id = None  # Track user session for multi-user support
         self.user_id = None  # Database user ID
-        self.root.title("AIT Complete CMMS - Computerized Maintenance Management System")
+        self.root.setWindowTitle("AIT Complete CMMS - Computerized Maintenance Management System")
 
         # ===== UI SCALING FOR BETTER READABILITY =====
         # Increase UI scaling to make text and widgets larger
@@ -5828,14 +5838,14 @@ class AITCMMSSystem:
             db_pool.initialize(self.DB_CONFIG, min_conn=2, max_conn=20)
             print("Database connection pool initialized successfully")
         except Exception as e:
-            messagebox.showerror("Database Error",
+            QMessageBox.critical(self, "Database Error",
                 f"Failed to initialize database connection:\n{str(e)}\n\nPlease check your internet connection and try again.")
-            self.root.destroy()
+            self.root.close()
             return
 
         # Show login dialog after database pool is ready
         if not self.show_login_dialog():
-            self.root.destroy()
+            self.root.close()
             return
 
         # Load technicians list from database (after successful login)
@@ -5938,7 +5948,7 @@ class AITCMMSSystem:
         """Close selected CM with parts consumption tracking"""
         selected = self.cm_tree.selection()
         if not selected:
-            messagebox.showwarning("Warning", "Please select a CM to close")
+            QMessageBox.warning(self, "Warning", "Please select a CM to close")
             return
 
         # Get selected CM data
@@ -5956,7 +5966,7 @@ class AITCMMSSystem:
     
         cm_data = cursor.fetchone()
         if not cm_data:
-            messagebox.showerror("Error", "CM not found")
+            QMessageBox.critical(self, "Error", "CM not found")
             return
     
         (cm_num, equipment, desc, tech, status, labor_hrs, 
@@ -5964,31 +5974,31 @@ class AITCMMSSystem:
     
         # Check if already closed
         if status in ['Closed', 'Completed']:
-            messagebox.showinfo("Info", f"CM {cm_number} is already closed")
+            QMessageBox.information(self, "Info", f"CM {cm_number} is already closed")
             return
     
         # Create closure dialog
-        dialog = tk.Toplevel(self.root)
-        dialog.title(f"Close CM - {cm_number}")
+        dialog = QDialog(self.root)
+        dialog.setWindowTitle(f"Close CM - {cm_number}")
         dialog.geometry("700x600")
-        dialog.transient(self.root)
+        dialog.setParent(self.root)
         dialog.grab_set()
         
         # Header
-        header_frame = ttk.Frame(dialog)
+        header_frame = QWidget(dialog)
         header_frame.pack(fill='x', padx=10, pady=10)
     
-        ttk.Label(header_frame, text=f"Close Corrective Maintenance", 
+        QLabel(header_frame, text=f"Close Corrective Maintenance", 
                 font=('Arial', 12, 'bold')).pack()
-        ttk.Label(header_frame, text=f"CM Number: {cm_number}", 
+        QLabel(header_frame, text=f"CM Number: {cm_number}", 
                 font=('Arial', 10)).pack()
-        ttk.Label(header_frame, text=f"Equipment: {equipment}", 
+        QLabel(header_frame, text=f"Equipment: {equipment}", 
                 font=('Arial', 10)).pack()
     
         # Main form frame with scrollbar
         canvas = tk.Canvas(dialog)
-        scrollbar = ttk.Scrollbar(dialog, orient="vertical", command=canvas.yview)
-        scrollable_frame = ttk.Frame(canvas)
+        scrollbar = QScrollArea(dialog, orient="vertical", command=canvas.yview)
+        scrollable_frame = QWidget(canvas)
         
         scrollable_frame.bind(
             "<Configure>",
@@ -6005,57 +6015,57 @@ class AITCMMSSystem:
         row = 0
     
         # Completion Date
-        ttk.Label(scrollable_frame, text="Completion Date*:", 
+        QLabel(scrollable_frame, text="Completion Date*:", 
                 font=('Arial', 10, 'bold')).grid(row=row, column=0, sticky='w', padx=10, pady=5)
         completion_date_var = tk.StringVar(value=datetime.now().strftime('%Y-%m-%d'))
-        ttk.Entry(scrollable_frame, textvariable=completion_date_var, width=40).grid(
+        QLineEdit(scrollable_frame, textvariable=completion_date_var, width=40).grid(
             row=row, column=1, sticky='w', padx=10, pady=5)
-        ttk.Label(scrollable_frame, text="(Format: YYYY-MM-DD)", 
+        QLabel(scrollable_frame, text="(Format: YYYY-MM-DD)", 
                 font=('Arial', 8, 'italic')).grid(row=row, column=2, sticky='w')
         row += 1
     
         # Labor Hours
-        ttk.Label(scrollable_frame, text="Total Labor Hours*:", 
+        QLabel(scrollable_frame, text="Total Labor Hours*:", 
                 font=('Arial', 10, 'bold')).grid(row=row, column=0, sticky='w', padx=10, pady=5)
         labor_hours_var = tk.StringVar(value=str(labor_hrs) if labor_hrs else '')
-        ttk.Entry(scrollable_frame, textvariable=labor_hours_var, width=40).grid(
+        QLineEdit(scrollable_frame, textvariable=labor_hours_var, width=40).grid(
             row=row, column=1, sticky='w', padx=10, pady=5)
         row += 1
     
-        ttk.Separator(scrollable_frame, orient='horizontal').grid(
+        QFrame(scrollable_frame, orient='horizontal').grid(
             row=row, column=0, columnspan=3, sticky='ew', pady=10)
         row += 1
     
         # Root Cause
-        ttk.Label(scrollable_frame, text="Root Cause*:", 
+        QLabel(scrollable_frame, text="Root Cause*:", 
                 font=('Arial', 10, 'bold')).grid(row=row, column=0, sticky='nw', padx=10, pady=5)
-        root_cause_text = tk.Text(scrollable_frame, width=50, height=4)
+        root_cause_text = QTextEdit(scrollable_frame, width=50, height=4)
         root_cause_text.insert('1.0', root_cause or '')
         root_cause_text.grid(row=row, column=1, sticky='w', padx=10, pady=5)
         row += 1
     
         # Corrective Action
-        ttk.Label(scrollable_frame, text="Corrective Action Taken*:", 
+        QLabel(scrollable_frame, text="Corrective Action Taken*:", 
                 font=('Arial', 10, 'bold')).grid(row=row, column=0, sticky='nw', padx=10, pady=5)
-        corr_action_text = tk.Text(scrollable_frame, width=50, height=4)
+        corr_action_text = QTextEdit(scrollable_frame, width=50, height=4)
         corr_action_text.insert('1.0', corr_action or '')
         corr_action_text.grid(row=row, column=1, sticky='w', padx=10, pady=5)
         row += 1
     
         # Additional Notes
-        ttk.Label(scrollable_frame, text="Additional Notes:", 
+        QLabel(scrollable_frame, text="Additional Notes:", 
                 font=('Arial', 10, 'bold')).grid(row=row, column=0, sticky='nw', padx=10, pady=5)
-        notes_text = tk.Text(scrollable_frame, width=50, height=4)
+        notes_text = QTextEdit(scrollable_frame, width=50, height=4)
         notes_text.insert('1.0', notes or '')
         notes_text.grid(row=row, column=1, sticky='w', padx=10, pady=5)
         row += 1
     
-        ttk.Separator(scrollable_frame, orient='horizontal').grid(
+        QFrame(scrollable_frame, orient='horizontal').grid(
             row=row, column=0, columnspan=3, sticky='ew', pady=10)
         row += 1
     
         # Parts consumption question - THIS IS THE KEY INTEGRATION POINT
-        ttk.Label(scrollable_frame, text="Were any parts used from MRO Stock?", 
+        QLabel(scrollable_frame, text="Were any parts used from MRO Stock?", 
                 font=('Arial', 11, 'bold'), foreground='blue').grid(
                     row=row, column=0, columnspan=2, sticky='w', padx=10, pady=10)
         row += 1
@@ -6067,7 +6077,7 @@ class AITCMMSSystem:
             """Validate required fields and return a dict of form values, or None if invalid"""
             # Validate required fields
             if not completion_date_var.get().strip():
-                messagebox.showerror("Error", "Completion date is required")
+                QMessageBox.critical(self, "Error", "Completion date is required")
                 return None
             # Accept multiple common date formats and normalize to YYYY-MM-DD
             date_input = completion_date_var.get().strip()
@@ -6079,26 +6089,26 @@ class AITCMMSSystem:
                 except ValueError:
                     continue
             if not parsed_date:
-                messagebox.showerror("Error", "Invalid date. Use YYYY-MM-DD or MM/DD/YY.")
+                QMessageBox.critical(self, "Error", "Invalid date. Use YYYY-MM-DD or MM/DD/YY.")
                 return None
             if not labor_hours_var.get().strip():
-                messagebox.showerror("Error", "Labor hours is required")
+                QMessageBox.critical(self, "Error", "Labor hours is required")
                 return None
             try:
                 labor_hrs_value = float(labor_hours_var.get())
                 if labor_hrs_value < 0:
-                    messagebox.showerror("Error", "Labor hours cannot be negative")
+                    QMessageBox.critical(self, "Error", "Labor hours cannot be negative")
                     return None
             except ValueError:
-                messagebox.showerror("Error", "Invalid labor hours value")
+                QMessageBox.critical(self, "Error", "Invalid labor hours value")
                 return None
             root_cause_value = root_cause_text.get('1.0', 'end-1c').strip()
             if not root_cause_value:
-                messagebox.showerror("Error", "Root cause is required")
+                QMessageBox.critical(self, "Error", "Root cause is required")
                 return None
             corr_action_value = corr_action_text.get('1.0', 'end-1c').strip()
             if not corr_action_value:
-                messagebox.showerror("Error", "Corrective action is required")
+                QMessageBox.critical(self, "Error", "Corrective action is required")
                 return None
             additional_notes = notes_text.get('1.0', 'end-1c').strip()
             return {
@@ -6140,20 +6150,20 @@ class AITCMMSSystem:
 
                 self.conn.commit()
 
-                messagebox.showinfo("Success", 
+                QMessageBox.information(self, "Success", 
                     f"CM {cm_number} completed successfully!\n\n"
                     f"Completion Date: {form_values['completion_date']}\n"
                     f"Labor Hours: {form_values['labor_hours']}\n"
                     f"Status: Closed")
 
                 parts_dialog_state['open'] = False
-                dialog.destroy()
+                dialog.close()
                 self.load_corrective_maintenance()
 
             except Exception as e:
                 parts_dialog_state['open'] = False
                 self.conn.rollback()
-                messagebox.showerror("Error", f"Failed to complete CM: {str(e)}")
+                QMessageBox.critical(self, "Error", f"Failed to complete CM: {str(e)}")
 
         def on_parts_choice():
             # Open parts dialog immediately when selecting Yes; prevent multiple openings
@@ -6182,59 +6192,59 @@ class AITCMMSSystem:
                         except Exception:
                             parts_dialog_state['open'] = False
                     else:
-                        messagebox.showerror("Error", 
+                        QMessageBox.critical(self, "Error", 
                             "Parts integration module not initialized.\nPlease contact system administrator.")
             except Exception:
                 parts_dialog_state['open'] = False
 
-        ttk.Radiobutton(scrollable_frame, text="No parts were used", 
+        QRadioButton(scrollable_frame, text="No parts were used", 
                     variable=parts_used_var, value="No", command=on_parts_choice).grid(
                         row=row, column=0, columnspan=2, sticky='w', padx=30, pady=5)
         row += 1
     
-        ttk.Radiobutton(scrollable_frame, text="Yes, parts were used (will open parts dialog)", 
+        QRadioButton(scrollable_frame, text="Yes, parts were used (will open parts dialog)", 
                     variable=parts_used_var, value="Yes", command=on_parts_choice).grid(
                         row=row, column=0, columnspan=2, sticky='w', padx=30, pady=5)
         row += 1
     
         # Button frame
-        button_frame = ttk.Frame(dialog)
+        button_frame = QWidget(dialog)
         button_frame.pack(fill='x', padx=10, pady=10)
     
         def validate_and_proceed():
             """Validate closure form and proceed to parts or close"""
             # Validate required fields
             if not completion_date_var.get().strip():
-                messagebox.showerror("Error", "Completion date is required")
+                QMessageBox.critical(self, "Error", "Completion date is required")
                 return
         
             try:
                 datetime.strptime(completion_date_var.get(), '%Y-%m-%d')
             except ValueError:
-                messagebox.showerror("Error", "Invalid date format. Use YYYY-MM-DD")
+                QMessageBox.critical(self, "Error", "Invalid date format. Use YYYY-MM-DD")
                 return
         
             if not labor_hours_var.get().strip():
-                messagebox.showerror("Error", "Labor hours is required")
+                QMessageBox.critical(self, "Error", "Labor hours is required")
                 return
         
             try:
                 labor_hrs_value = float(labor_hours_var.get())
                 if labor_hrs_value < 0:
-                    messagebox.showerror("Error", "Labor hours cannot be negative")
+                    QMessageBox.critical(self, "Error", "Labor hours cannot be negative")
                     return
             except ValueError:
-                messagebox.showerror("Error", "Invalid labor hours value")
+                QMessageBox.critical(self, "Error", "Invalid labor hours value")
                 return
         
             root_cause_value = root_cause_text.get('1.0', 'end-1c').strip()
             if not root_cause_value:
-                messagebox.showerror("Error", "Root cause is required")
+                QMessageBox.critical(self, "Error", "Root cause is required")
                 return
         
             corr_action_value = corr_action_text.get('1.0', 'end-1c').strip()
             if not corr_action_value:
-                messagebox.showerror("Error", "Corrective action is required")
+                QMessageBox.critical(self, "Error", "Corrective action is required")
                 return
         
             # Get all form values
@@ -6271,23 +6281,23 @@ class AITCMMSSystem:
                 
                     self.conn.commit()
                 
-                    messagebox.showinfo("Success", 
+                    QMessageBox.information(self, "Success", 
                         f"CM {cm_number} closed successfully!\n\n"
                         f"Completion Date: {completion_date}\n"
                         f"Labor Hours: {labor_hours}\n"
                         f"Status: Closed")
                 
-                    dialog.destroy()
+                    dialog.close()
                     self.load_corrective_maintenance()
                 
                 except Exception as e:
                     self.conn.rollback()
-                    messagebox.showerror("Error", f"Failed to close CM: {str(e)}")
+                    QMessageBox.critical(self, "Error", f"Failed to close CM: {str(e)}")
         
             # Check if parts were used
             if parts_used_var.get() == "Yes":
                 # Close this dialog and open parts consumption dialog
-                dialog.destroy()
+                dialog.close()
             
                 # Open parts consumption dialog
                 # This requires the CMPartsIntegration module to be initialized
@@ -6298,7 +6308,7 @@ class AITCMMSSystem:
                         callback=finalize_closure
                     )
                 else:
-                    messagebox.showerror("Error", 
+                    QMessageBox.critical(self, "Error", 
                         "Parts integration module not initialized.\n"
                         "Please contact system administrator.")
                     # Still update CM but without parts
@@ -6307,9 +6317,9 @@ class AITCMMSSystem:
                 # No parts used, close directly
                 finalize_closure(True)
     
-        ttk.Button(button_frame, text="Proceed to Close CM", 
+        QPushButton(button_frame, text="Proceed to Close CM", 
                 command=validate_and_proceed).pack(side='left', padx=5)
-        ttk.Button(button_frame, text="Cancel", 
+        QPushButton(button_frame, text="Cancel", 
                 command=dialog.destroy).pack(side='left', padx=5)
     
     
@@ -6326,10 +6336,10 @@ class AITCMMSSystem:
         def create_login_dialog():
             nonlocal login_successful
 
-            login_dialog = tk.Toplevel(self.root)
-            login_dialog.title("AIT CMMS - User Login")
+            login_dialog = QDialog(self.root)
+            login_dialog.setWindowTitle("AIT CMMS - User Login")
             login_dialog.geometry("400x250")
-            login_dialog.transient(self.root)
+            login_dialog.setParent(self.root)
             login_dialog.grab_set()
 
             # Center the dialog
@@ -6342,36 +6352,36 @@ class AITCMMSSystem:
             login_dialog.protocol("WM_DELETE_WINDOW", lambda: None)
 
             # Header
-            header_frame = ttk.Frame(login_dialog)
+            header_frame = QWidget(login_dialog)
             header_frame.pack(fill='x', padx=20, pady=20)
 
-            ttk.Label(header_frame, text="AIT CMMS LOGIN",
+            QLabel(header_frame, text="AIT CMMS LOGIN",
                     font=('Arial', 16, 'bold')).pack()
-            ttk.Label(header_frame, text="Enter your credentials",
+            QLabel(header_frame, text="Enter your credentials",
                     font=('Arial', 10)).pack(pady=5)
 
             # Login form
-            form_frame = ttk.Frame(login_dialog)
+            form_frame = QWidget(login_dialog)
             form_frame.pack(fill='both', expand=True, padx=20, pady=10)
 
             # Username
-            ttk.Label(form_frame, text="Username:", font=('Arial', 10)).grid(row=0, column=0, sticky='w', pady=5)
+            QLabel(form_frame, text="Username:", font=('Arial', 10)).grid(row=0, column=0, sticky='w', pady=5)
             username_var = tk.StringVar()
-            username_entry = ttk.Entry(form_frame, textvariable=username_var, width=25)
+            username_entry = QLineEdit(form_frame, textvariable=username_var, width=25)
             username_entry.grid(row=0, column=1, sticky='ew', pady=5)
             username_entry.focus_set()
 
             # Password
-            ttk.Label(form_frame, text="Password:", font=('Arial', 10)).grid(row=1, column=0, sticky='w', pady=5)
+            QLabel(form_frame, text="Password:", font=('Arial', 10)).grid(row=1, column=0, sticky='w', pady=5)
             password_var = tk.StringVar()
-            password_entry = ttk.Entry(form_frame, textvariable=password_var, show="*", width=25)
+            password_entry = QLineEdit(form_frame, textvariable=password_var, show="*", width=25)
             password_entry.grid(row=1, column=1, sticky='ew', pady=5)
 
             form_frame.columnconfigure(1, weight=1)
 
             # Status label
             status_var = tk.StringVar()
-            status_label = ttk.Label(form_frame, textvariable=status_var, foreground='red', font=('Arial', 9))
+            status_label = QLabel(form_frame, textvariable=status_var, foreground='red', font=('Arial', 9))
             status_label.grid(row=2, column=0, columnspan=2, pady=5)
 
             login_in_progress = False
@@ -6434,12 +6444,12 @@ class AITCMMSSystem:
                 dialog.quit()
 
             # Buttons
-            button_frame = ttk.Frame(login_dialog)
+            button_frame = QWidget(login_dialog)
             button_frame.pack(side='bottom', fill='x', padx=20, pady=20)
 
-            login_button = ttk.Button(button_frame, text="Login", command=do_login)
+            login_button = QPushButton(button_frame, text="Login", command=do_login)
             login_button.pack(side='left', padx=5)
-            ttk.Button(button_frame, text="Exit", command=cancel_login).pack(side='right', padx=5)
+            QPushButton(button_frame, text="Exit", command=cancel_login).pack(side='right', padx=5)
 
             # Enter key bindings
             def on_enter_key(event):
@@ -6453,8 +6463,8 @@ class AITCMMSSystem:
 
         # Create and run the dialog
         dialog = create_login_dialog()
-        dialog.mainloop()
-        dialog.destroy()
+        dialog.exec_()
+        dialog.close()
 
         return login_successful
 
@@ -6565,48 +6575,48 @@ class AITCMMSSystem:
 
     def create_custom_pm_templates_tab(self):
         """Create PM Templates management tab"""
-        self.pm_templates_frame = ttk.Frame(self.notebook)
+        self.pm_templates_frame = QWidget(self.notebook)
         self.notebook.add(self.pm_templates_frame, text="PM Templates")
 
         # Controls
-        controls_frame = ttk.LabelFrame(self.pm_templates_frame, text="PM Template Controls", padding=10)
+        controls_frame = QLabelFrame(self.pm_templates_frame, text="PM Template Controls", padding=10)
         controls_frame.pack(fill='x', padx=10, pady=5)
 
-        ttk.Button(controls_frame, text="Create Custom Template",
+        QPushButton(controls_frame, text="Create Custom Template",
                 command=self.create_custom_pm_template_dialog).pack(side='left', padx=5)
-        ttk.Button(controls_frame, text="Edit Template",
+        QPushButton(controls_frame, text="Edit Template",
                 command=self.edit_pm_template_dialog).pack(side='left', padx=5)
-        ttk.Button(controls_frame, text="Preview Template",
+        QPushButton(controls_frame, text="Preview Template",
                 command=self.preview_pm_template).pack(side='left', padx=5)
-        ttk.Button(controls_frame, text="Delete Template",
+        QPushButton(controls_frame, text="Delete Template",
                 command=self.delete_pm_template).pack(side='left', padx=5)
-        ttk.Button(controls_frame, text="Export Template to PDF",
+        QPushButton(controls_frame, text="Export Template to PDF",
                 command=self.export_custom_template_pdf).pack(side='left', padx=5)
 
         # Create main content area with paned window for resizable sections
-        main_paned = ttk.PanedWindow(self.pm_templates_frame, orient='vertical')
+        main_paned = QSplitter(self.pm_templates_frame, orient='vertical')
         main_paned.pack(fill='both', expand=True, padx=10, pady=5)
 
         # Top section: Equipment Search and List
-        equipment_section = ttk.Frame(main_paned)
+        equipment_section = QWidget(main_paned)
         main_paned.add(equipment_section, weight=1)
 
         # Equipment search frame
-        equipment_search_frame = ttk.LabelFrame(equipment_section, text="Search Equipment by BFM/SAP/Name", padding=5)
+        equipment_search_frame = QLabelFrame(equipment_section, text="Search Equipment by BFM/SAP/Name", padding=5)
         equipment_search_frame.pack(fill='x', padx=5, pady=5)
 
-        ttk.Label(equipment_search_frame, text="Search:").pack(side='left', padx=5)
+        QLabel(equipment_search_frame, text="Search:").pack(side='left', padx=5)
         self.equipment_search_var = tk.StringVar()
         self.equipment_search_var.trace('w', self.filter_equipment_for_pm_templates)
-        equipment_search_entry = ttk.Entry(equipment_search_frame, textvariable=self.equipment_search_var, width=40)
+        equipment_search_entry = QLineEdit(equipment_search_frame, textvariable=self.equipment_search_var, width=40)
         equipment_search_entry.pack(side='left', padx=5)
-        ttk.Label(equipment_search_frame, text="(Search by BFM No, SAP No, or Equipment Name)").pack(side='left', padx=5)
+        QLabel(equipment_search_frame, text="(Search by BFM No, SAP No, or Equipment Name)").pack(side='left', padx=5)
 
         # Equipment list frame
-        equipment_list_frame = ttk.LabelFrame(equipment_section, text="Equipment List - Double-click to view PM Templates", padding=10)
+        equipment_list_frame = QLabelFrame(equipment_section, text="Equipment List - Double-click to view PM Templates", padding=10)
         equipment_list_frame.pack(fill='both', expand=True, padx=5, pady=5)
 
-        self.equipment_pm_tree = ttk.Treeview(equipment_list_frame,
+        self.equipment_pm_tree = QTreeWidget(equipment_list_frame,
                                             columns=('BFM No', 'SAP No', 'Description', 'Location'),
                                             show='headings', height=8)
 
@@ -6622,8 +6632,8 @@ class AITCMMSSystem:
             self.equipment_pm_tree.column(col, width=width)
 
         # Scrollbars for equipment tree
-        equipment_v_scrollbar = ttk.Scrollbar(equipment_list_frame, orient='vertical', command=self.equipment_pm_tree.yview)
-        equipment_h_scrollbar = ttk.Scrollbar(equipment_list_frame, orient='horizontal', command=self.equipment_pm_tree.xview)
+        equipment_v_scrollbar = QScrollArea(equipment_list_frame, orient='vertical', command=self.equipment_pm_tree.yview)
+        equipment_h_scrollbar = QScrollArea(equipment_list_frame, orient='horizontal', command=self.equipment_pm_tree.xview)
         self.equipment_pm_tree.configure(yscrollcommand=equipment_v_scrollbar.set, xscrollcommand=equipment_h_scrollbar.set)
 
         self.equipment_pm_tree.grid(row=0, column=0, sticky='nsew')
@@ -6637,24 +6647,24 @@ class AITCMMSSystem:
         self.equipment_pm_tree.bind('<Double-Button-1>', self.show_equipment_pm_templates)
 
         # Bottom section: Templates for selected equipment
-        templates_section = ttk.Frame(main_paned)
+        templates_section = QWidget(main_paned)
         main_paned.add(templates_section, weight=1)
 
         # Template search frame (kept for backward compatibility)
-        search_frame = ttk.Frame(templates_section)
+        search_frame = QWidget(templates_section)
         search_frame.pack(fill='x', padx=5, pady=5)
 
-        ttk.Label(search_frame, text="Filter Templates:").pack(side='left', padx=5)
+        QLabel(search_frame, text="Filter Templates:").pack(side='left', padx=5)
         self.template_search_var = tk.StringVar()
         self.template_search_var.trace('w', self.filter_template_list)
-        search_entry = ttk.Entry(search_frame, textvariable=self.template_search_var, width=30)
+        search_entry = QLineEdit(search_frame, textvariable=self.template_search_var, width=30)
         search_entry.pack(side='left', padx=5)
 
         # Templates list
-        list_frame = ttk.LabelFrame(templates_section, text="PM Templates (Double-click equipment above to filter, or view all below)", padding=10)
+        list_frame = QLabelFrame(templates_section, text="PM Templates (Double-click equipment above to filter, or view all below)", padding=10)
         list_frame.pack(fill='both', expand=True, padx=5, pady=5)
 
-        self.templates_tree = ttk.Treeview(list_frame,
+        self.templates_tree = QTreeWidget(list_frame,
                                         columns=('BFM No', 'Template Name', 'PM Type', 'Steps', 'Est Hours', 'Updated'),
                                         show='headings', height=8)
 
@@ -6672,8 +6682,8 @@ class AITCMMSSystem:
             self.templates_tree.column(col, width=width)
 
         # Scrollbars
-        template_v_scrollbar = ttk.Scrollbar(list_frame, orient='vertical', command=self.templates_tree.yview)
-        template_h_scrollbar = ttk.Scrollbar(list_frame, orient='horizontal', command=self.templates_tree.xview)
+        template_v_scrollbar = QScrollArea(list_frame, orient='vertical', command=self.templates_tree.yview)
+        template_h_scrollbar = QScrollArea(list_frame, orient='horizontal', command=self.templates_tree.xview)
         self.templates_tree.configure(yscrollcommand=template_v_scrollbar.set, xscrollcommand=template_h_scrollbar.set)
 
         # Pack treeview and scrollbars
@@ -6718,11 +6728,11 @@ class AITCMMSSystem:
                 app = QApplication(sys.argv)
 
             # Create a Tkinter frame to host the PyQt widget
-            kpi_frame = ttk.Frame(self.notebook)
+            kpi_frame = QWidget(self.notebook)
             self.notebook.add(kpi_frame, text="📊 KPI Dashboard")
 
             # Add instructions label
-            instructions = ttk.Label(
+            instructions = QLabel(
                 kpi_frame,
                 text="KPI Dashboard requires PyQt5. Click the button below to open the KPI Dashboard in a new window.",
                 wraplength=800,
@@ -6744,9 +6754,9 @@ class AITCMMSSystem:
                     app.exec_()
                 except Exception as e:
                     import traceback
-                    messagebox.showerror("Error", f"Failed to open KPI Dashboard:\n{str(e)}\n\n{traceback.format_exc()}")
+                    QMessageBox.critical(self, "Error", f"Failed to open KPI Dashboard:\n{str(e)}\n\n{traceback.format_exc()}")
 
-            launch_btn = ttk.Button(
+            launch_btn = QPushButton(
                 kpi_frame,
                 text="📊 Open KPI Dashboard",
                 command=launch_kpi_dashboard
@@ -6768,7 +6778,7 @@ class AITCMMSSystem:
             This dashboard is only visible to managers.
             """
 
-            features_label = ttk.Label(
+            features_label = QLabel(
                 kpi_frame,
                 text=features_text,
                 font=('Arial', 10),
@@ -6778,10 +6788,10 @@ class AITCMMSSystem:
 
         except ImportError as e:
             # PyQt5 not available, show alternative message
-            kpi_frame = ttk.Frame(self.notebook)
+            kpi_frame = QWidget(self.notebook)
             self.notebook.add(kpi_frame, text="📊 KPI Dashboard")
 
-            error_label = ttk.Label(
+            error_label = QLabel(
                 kpi_frame,
                 text=f"KPI Dashboard requires PyQt5 to be installed.\n\nError: {str(e)}\n\nPlease install PyQt5 using: pip install PyQt5",
                 font=('Arial', 12),
@@ -6793,24 +6803,24 @@ class AITCMMSSystem:
 
         except Exception as e:
             import traceback
-            messagebox.showerror("Error", f"Failed to create KPI tab:\n{str(e)}\n\n{traceback.format_exc()}")
+            QMessageBox.critical(self, "Error", f"Failed to create KPI tab:\n{str(e)}\n\n{traceback.format_exc()}")
 
     def create_custom_pm_template_dialog(self):
         """Dialog to create custom PM template for specific equipment"""
-        dialog = tk.Toplevel(self.root)
-        dialog.title("Create Custom PM Template")
+        dialog = QDialog(self.root)
+        dialog.setWindowTitle("Create Custom PM Template")
         dialog.geometry("800x750")
-        dialog.transient(self.root)
+        dialog.setParent(self.root)
         dialog.grab_set()
 
         # Equipment selection
-        header_frame = ttk.LabelFrame(dialog, text="Template Information", padding=10)
+        header_frame = QLabelFrame(dialog, text="Template Information", padding=10)
         header_frame.pack(fill='x', padx=10, pady=5)
 
         # BFM Equipment selection
-        ttk.Label(header_frame, text="BFM Equipment Number:").grid(row=0, column=0, sticky='w', pady=5)
+        QLabel(header_frame, text="BFM Equipment Number:").grid(row=0, column=0, sticky='w', pady=5)
         bfm_var = tk.StringVar()
-        bfm_combo = ttk.Combobox(header_frame, textvariable=bfm_var, width=25)
+        bfm_combo = QComboBox(header_frame, textvariable=bfm_var, width=25)
         bfm_combo.grid(row=0, column=1, sticky='w', padx=5, pady=5)
 
         # Populate equipment list
@@ -6821,59 +6831,59 @@ class AITCMMSSystem:
                             for bfm, desc in equipment_list]
 
         # Template name
-        ttk.Label(header_frame, text="Template Name:").grid(row=0, column=2, sticky='w', pady=5, padx=(20,5))
+        QLabel(header_frame, text="Template Name:").grid(row=0, column=2, sticky='w', pady=5, padx=(20,5))
         template_name_var = tk.StringVar()
-        ttk.Entry(header_frame, textvariable=template_name_var, width=25).grid(row=0, column=3, sticky='w', padx=5, pady=5)
+        QLineEdit(header_frame, textvariable=template_name_var, width=25).grid(row=0, column=3, sticky='w', padx=5, pady=5)
 
         # PM Type
-        ttk.Label(header_frame, text="PM Type:").grid(row=1, column=0, sticky='w', pady=5)
+        QLabel(header_frame, text="PM Type:").grid(row=1, column=0, sticky='w', pady=5)
         pm_type_var = tk.StringVar(value='Annual')
-        pm_type_combo = ttk.Combobox(header_frame, textvariable=pm_type_var, 
+        pm_type_combo = QComboBox(header_frame, textvariable=pm_type_var, 
                                     values=['Monthly', 'Six Month', 'Annual'], width=22)
         pm_type_combo.grid(row=1, column=1, sticky='w', padx=5, pady=5)
 
         # Estimated hours
-        ttk.Label(header_frame, text="Estimated Hours:").grid(row=1, column=2, sticky='w', pady=5, padx=(20,5))
+        QLabel(header_frame, text="Estimated Hours:").grid(row=1, column=2, sticky='w', pady=5, padx=(20,5))
         est_hours_var = tk.StringVar(value="1.0")
-        ttk.Entry(header_frame, textvariable=est_hours_var, width=10).grid(row=1, column=3, sticky='w', padx=5, pady=5)
+        QLineEdit(header_frame, textvariable=est_hours_var, width=10).grid(row=1, column=3, sticky='w', padx=5, pady=5)
 
         # Custom checklist section
-        checklist_frame = ttk.LabelFrame(dialog, text="Custom PM Checklist", padding=10)
+        checklist_frame = QLabelFrame(dialog, text="Custom PM Checklist", padding=10)
         checklist_frame.pack(fill='both', expand=True, padx=10, pady=5)
 
         # Checklist controls
-        controls_subframe = ttk.Frame(checklist_frame)
+        controls_subframe = QWidget(checklist_frame)
         controls_subframe.pack(fill='x', pady=5)
 
         # Checklist listbox with scrollbar
-        list_frame = ttk.Frame(checklist_frame)
+        list_frame = QWidget(checklist_frame)
         list_frame.pack(fill='both', expand=True, pady=5)
 
-        checklist_listbox = tk.Listbox(list_frame, height=15, font=('Arial', 9))
-        list_scrollbar = ttk.Scrollbar(list_frame, orient='vertical', command=checklist_listbox.yview)
+        checklist_listbox = QListWidget(list_frame, height=15, font=('Arial', 9))
+        list_scrollbar = QScrollArea(list_frame, orient='vertical', command=checklist_listbox.yview)
         checklist_listbox.configure(yscrollcommand=list_scrollbar.set)
 
         checklist_listbox.pack(side='left', fill='both', expand=True)
         list_scrollbar.pack(side='right', fill='y')
 
         # Step editing
-        edit_frame = ttk.LabelFrame(checklist_frame, text="Edit Selected Step", padding=5)
+        edit_frame = QLabelFrame(checklist_frame, text="Edit Selected Step", padding=5)
         edit_frame.pack(fill='x', pady=5)
 
         step_text_var = tk.StringVar()
-        step_entry = ttk.Entry(edit_frame, textvariable=step_text_var, width=80)
+        step_entry = QLineEdit(edit_frame, textvariable=step_text_var, width=80)
         step_entry.pack(side='left', fill='x', expand=True, padx=5)
 
         # Special instructions and safety notes
-        notes_frame = ttk.LabelFrame(dialog, text="Additional Information", padding=10)
+        notes_frame = QLabelFrame(dialog, text="Additional Information", padding=10)
         notes_frame.pack(fill='x', padx=10, pady=5)
 
-        ttk.Label(notes_frame, text="Special Instructions:").grid(row=0, column=0, sticky='nw', pady=2)
-        special_instructions_text = tk.Text(notes_frame, height=3, width=50)
+        QLabel(notes_frame, text="Special Instructions:").grid(row=0, column=0, sticky='nw', pady=2)
+        special_instructions_text = QTextEdit(notes_frame, height=3, width=50)
         special_instructions_text.grid(row=0, column=1, sticky='ew', padx=5, pady=2)
 
-        ttk.Label(notes_frame, text="Safety Notes:").grid(row=1, column=0, sticky='nw', pady=2)
-        safety_notes_text = tk.Text(notes_frame, height=3, width=50)
+        QLabel(notes_frame, text="Safety Notes:").grid(row=1, column=0, sticky='nw', pady=2)
+        safety_notes_text = QTextEdit(notes_frame, height=3, width=50)
         safety_notes_text.grid(row=1, column=1, sticky='ew', padx=5, pady=2)
 
         notes_frame.grid_columnconfigure(1, weight=1)
@@ -6944,11 +6954,11 @@ class AITCMMSSystem:
             try:
                 # Validate inputs
                 if not bfm_var.get():
-                    messagebox.showerror("Error", "Please select equipment")
+                    QMessageBox.critical(self, "Error", "Please select equipment")
                     return
             
                 if not template_name_var.get().strip():
-                    messagebox.showerror("Error", "Please enter template name")
+                    QMessageBox.critical(self, "Error", "Please enter template name")
                     return
             
                 # Extract BFM number from combo selection
@@ -6962,7 +6972,7 @@ class AITCMMSSystem:
                     checklist_items.append(step_content)
             
                 if not checklist_items:
-                    messagebox.showerror("Error", "Please add at least one checklist item")
+                    QMessageBox.critical(self, "Error", "Please add at least one checklist item")
                     return
             
                 # Save to database
@@ -6983,12 +6993,12 @@ class AITCMMSSystem:
                 ))
             
                 self.conn.commit()
-                messagebox.showinfo("Success", "Custom PM template created successfully!")
-                dialog.destroy()
+                QMessageBox.information(self, "Success", "Custom PM template created successfully!")
+                dialog.close()
                 self.load_pm_templates()
             
             except Exception as e:
-                messagebox.showerror("Error", f"Failed to save template: {str(e)}")
+                QMessageBox.critical(self, "Error", f"Failed to save template: {str(e)}")
 
         def on_step_select(event):
             selection = checklist_listbox.curselection()
@@ -6998,13 +7008,13 @@ class AITCMMSSystem:
                 step_text_var.set(step_content)
 
         # NOW CREATE ALL BUTTONS - AFTER ALL FUNCTIONS ARE DEFINED
-        ttk.Button(controls_subframe, text="Add Step", command=add_checklist_step).pack(side='left', padx=5)
-        ttk.Button(controls_subframe, text="Remove Step", command=remove_checklist_step).pack(side='left', padx=5)
-        ttk.Button(controls_subframe, text="Load Default Template", command=load_default_template).pack(side='left', padx=5)
-        ttk.Button(controls_subframe, text="Move Up", command=move_step_up).pack(side='left', padx=5)
-        ttk.Button(controls_subframe, text="Move Down", command=move_step_down).pack(side='left', padx=5)
+        QPushButton(controls_subframe, text="Add Step", command=add_checklist_step).pack(side='left', padx=5)
+        QPushButton(controls_subframe, text="Remove Step", command=remove_checklist_step).pack(side='left', padx=5)
+        QPushButton(controls_subframe, text="Load Default Template", command=load_default_template).pack(side='left', padx=5)
+        QPushButton(controls_subframe, text="Move Up", command=move_step_up).pack(side='left', padx=5)
+        QPushButton(controls_subframe, text="Move Down", command=move_step_down).pack(side='left', padx=5)
 
-        ttk.Button(edit_frame, text="Update Step", command=update_selected_step).pack(side='right', padx=5)
+        QPushButton(edit_frame, text="Update Step", command=update_selected_step).pack(side='right', padx=5)
 
         # Bind listbox selection
         checklist_listbox.bind('<<ListboxSelect>>', on_step_select)
@@ -7013,11 +7023,11 @@ class AITCMMSSystem:
         load_default_template()
 
         # Save and Cancel buttons
-        button_frame = ttk.Frame(dialog)
+        button_frame = QWidget(dialog)
         button_frame.pack(side='bottom', fill='x', padx=10, pady=10)
 
-        ttk.Button(button_frame, text="Save Template", command=save_template).pack(side='left', padx=5)
-        ttk.Button(button_frame, text="Cancel", command=dialog.destroy).pack(side='right', padx=5)
+        QPushButton(button_frame, text="Save Template", command=save_template).pack(side='left', padx=5)
+        QPushButton(button_frame, text="Cancel", command=dialog.destroy).pack(side='right', padx=5)
 
     def load_pm_templates(self):
         """Load PM templates into the tree"""
@@ -7209,12 +7219,12 @@ class AITCMMSSystem:
                             "Default"
                         ))
 
-                    messagebox.showinfo("Default Templates",
+                    QMessageBox.information(self, "Default Templates",
                         f"Showing default PM templates for equipment {bfm_no}\n\n"
                         f"These are standard templates. You can preview and customize them\n"
                         f"by clicking 'Customize This Template' in the preview window.")
                 else:
-                    messagebox.showinfo("No Templates",
+                    QMessageBox.information(self, "No Templates",
                         f"No PM templates found for equipment {bfm_no}")
                 return
 
@@ -7235,18 +7245,18 @@ class AITCMMSSystem:
                 ))
 
             # Update the label to show we're viewing templates for specific equipment
-            messagebox.showinfo("Templates Loaded",
+            QMessageBox.information(self, "Templates Loaded",
                 f"Showing {len(templates)} custom PM template(s) for equipment {bfm_no}")
 
         except Exception as e:
             print(f"Error showing equipment PM templates: {e}")
-            messagebox.showerror("Error", f"Failed to load templates: {str(e)}")
+            QMessageBox.critical(self, "Error", f"Failed to load templates: {str(e)}")
 
     def preview_pm_template(self):
         """Preview selected PM template"""
         selected = self.templates_tree.selection()
         if not selected:
-            messagebox.showwarning("Warning", "Please select a template to preview")
+            QMessageBox.warning(self, "Warning", "Please select a template to preview")
             return
 
         item = self.templates_tree.item(selected[0])
@@ -7269,7 +7279,7 @@ class AITCMMSSystem:
             equipment_data = cursor.fetchone()
 
             if not equipment_data:
-                messagebox.showerror("Error", "Equipment not found")
+                QMessageBox.critical(self, "Error", "Equipment not found")
                 return
 
             # Load default checklist items
@@ -7297,7 +7307,7 @@ class AITCMMSSystem:
 
             template_data = cursor.fetchone()
             if not template_data:
-                messagebox.showerror("Error", "Template not found")
+                QMessageBox.critical(self, "Error", "Template not found")
                 return
 
             equipment_desc = template_data[9]
@@ -7307,14 +7317,14 @@ class AITCMMSSystem:
             estimated_hours = template_data[7]
 
         # Create preview dialog
-        preview_dialog = tk.Toplevel(self.root)
-        preview_dialog.title(f"PM Template Preview - {bfm_no}")
+        preview_dialog = QDialog(self.root)
+        preview_dialog.setWindowTitle(f"PM Template Preview - {bfm_no}")
         preview_dialog.geometry("700x650")
-        preview_dialog.transient(self.root)
+        preview_dialog.setParent(self.root)
         preview_dialog.grab_set()
 
         # Template info
-        info_frame = ttk.LabelFrame(preview_dialog, text="Template Information", padding=10)
+        info_frame = QLabelFrame(preview_dialog, text="Template Information", padding=10)
         info_frame.pack(fill='x', padx=10, pady=5)
 
         info_text = f"Equipment: {bfm_no} - {equipment_desc or 'N/A'}\n"
@@ -7325,14 +7335,14 @@ class AITCMMSSystem:
         if is_default:
             info_text += "\n\nType: DEFAULT TEMPLATE (can be customized)"
 
-        ttk.Label(info_frame, text=info_text, font=('Arial', 10)).pack(anchor='w')
+        QLabel(info_frame, text=info_text, font=('Arial', 10)).pack(anchor='w')
 
         # Checklist preview
-        checklist_frame = ttk.LabelFrame(preview_dialog, text="PM Checklist", padding=10)
+        checklist_frame = QLabelFrame(preview_dialog, text="PM Checklist", padding=10)
         checklist_frame.pack(fill='both', expand=True, padx=10, pady=5)
 
-        checklist_text = tk.Text(checklist_frame, wrap='word', font=('Arial', 10))
-        scrollbar = ttk.Scrollbar(checklist_frame, orient='vertical', command=checklist_text.yview)
+        checklist_text = QTextEdit(checklist_frame, wrap='word', font=('Arial', 10))
+        scrollbar = QScrollArea(checklist_frame, orient='vertical', command=checklist_text.yview)
         checklist_text.configure(yscrollcommand=scrollbar.set)
 
         # Format checklist content
@@ -7359,26 +7369,26 @@ class AITCMMSSystem:
         scrollbar.pack(side='right', fill='y')
 
         # Buttons
-        button_frame = ttk.Frame(preview_dialog)
+        button_frame = QWidget(preview_dialog)
         button_frame.pack(side='bottom', fill='x', padx=10, pady=10)
 
-        ttk.Button(button_frame, text="Close", command=preview_dialog.destroy).pack(side='right', padx=5)
+        QPushButton(button_frame, text="Close", command=preview_dialog.destroy).pack(side='right', padx=5)
 
         # If default template, add "Customize" button
         if is_default:
             def customize_default():
-                preview_dialog.destroy()
+                preview_dialog.close()
                 self.create_custom_from_default(bfm_no, pm_type, checklist_items)
 
-            ttk.Button(button_frame, text="Customize This Template",
+            QPushButton(button_frame, text="Customize This Template",
                       command=customize_default, style='Accent.TButton').pack(side='right', padx=5)
 
     def create_custom_from_default(self, bfm_no, pm_type, default_checklist_items):
         """Create a custom template based on default checklist for specific equipment"""
-        dialog = tk.Toplevel(self.root)
-        dialog.title(f"Customize PM Template for {bfm_no}")
+        dialog = QDialog(self.root)
+        dialog.setWindowTitle(f"Customize PM Template for {bfm_no}")
         dialog.geometry("800x750")
-        dialog.transient(self.root)
+        dialog.setParent(self.root)
         dialog.grab_set()
 
         # Get equipment info
@@ -7388,40 +7398,40 @@ class AITCMMSSystem:
         equipment_desc = equipment_info[0] if equipment_info else "Unknown"
 
         # Header with equipment info
-        header_frame = ttk.LabelFrame(dialog, text="Template Information", padding=10)
+        header_frame = QLabelFrame(dialog, text="Template Information", padding=10)
         header_frame.pack(fill='x', padx=10, pady=5)
 
         info_text = f"Equipment: {bfm_no} - {equipment_desc}\nPM Type: {pm_type}"
-        ttk.Label(header_frame, text=info_text, font=('Arial', 10, 'bold')).pack(anchor='w', pady=5)
+        QLabel(header_frame, text=info_text, font=('Arial', 10, 'bold')).pack(anchor='w', pady=5)
 
         # Template name
-        name_frame = ttk.Frame(header_frame)
+        name_frame = QWidget(header_frame)
         name_frame.pack(fill='x', pady=5)
-        ttk.Label(name_frame, text="Template Name:").pack(side='left', padx=5)
+        QLabel(name_frame, text="Template Name:").pack(side='left', padx=5)
         template_name_var = tk.StringVar(value=f"Custom {pm_type} PM")
-        ttk.Entry(name_frame, textvariable=template_name_var, width=40).pack(side='left', padx=5)
+        QLineEdit(name_frame, textvariable=template_name_var, width=40).pack(side='left', padx=5)
 
         # Estimated hours
-        hours_frame = ttk.Frame(header_frame)
+        hours_frame = QWidget(header_frame)
         hours_frame.pack(fill='x', pady=5)
-        ttk.Label(hours_frame, text="Estimated Hours:").pack(side='left', padx=5)
+        QLabel(hours_frame, text="Estimated Hours:").pack(side='left', padx=5)
         est_hours_var = tk.StringVar(value="2.0")
-        ttk.Entry(hours_frame, textvariable=est_hours_var, width=10).pack(side='left', padx=5)
+        QLineEdit(hours_frame, textvariable=est_hours_var, width=10).pack(side='left', padx=5)
 
         # Checklist section
-        checklist_frame = ttk.LabelFrame(dialog, text="Customize PM Checklist", padding=10)
+        checklist_frame = QLabelFrame(dialog, text="Customize PM Checklist", padding=10)
         checklist_frame.pack(fill='both', expand=True, padx=10, pady=5)
 
         # Controls for checklist
-        controls_frame = ttk.Frame(checklist_frame)
+        controls_frame = QWidget(checklist_frame)
         controls_frame.pack(fill='x', pady=5)
 
         # Listbox with default items pre-populated
-        list_frame = ttk.Frame(checklist_frame)
+        list_frame = QWidget(checklist_frame)
         list_frame.pack(fill='both', expand=True, pady=5)
 
-        checklist_listbox = tk.Listbox(list_frame, height=15, font=('Arial', 9))
-        list_scrollbar = ttk.Scrollbar(list_frame, orient='vertical', command=checklist_listbox.yview)
+        checklist_listbox = QListWidget(list_frame, height=15, font=('Arial', 9))
+        list_scrollbar = QScrollArea(list_frame, orient='vertical', command=checklist_listbox.yview)
         checklist_listbox.configure(yscrollcommand=list_scrollbar.set)
 
         checklist_listbox.pack(side='left', fill='both', expand=True)
@@ -7432,10 +7442,10 @@ class AITCMMSSystem:
             checklist_listbox.insert('end', item)
 
         # Entry for new items
-        entry_frame = ttk.Frame(checklist_frame)
+        entry_frame = QWidget(checklist_frame)
         entry_frame.pack(fill='x', pady=5)
-        ttk.Label(entry_frame, text="Add/Edit Item:").pack(side='left', padx=5)
-        item_entry = ttk.Entry(entry_frame, width=60)
+        QLabel(entry_frame, text="Add/Edit Item:").pack(side='left', padx=5)
+        item_entry = QLineEdit(entry_frame, width=60)
         item_entry.pack(side='left', padx=5, fill='x', expand=True)
 
         def add_item():
@@ -7485,32 +7495,32 @@ class AITCMMSSystem:
         checklist_listbox.bind('<<ListboxSelect>>', on_select)
 
         # Buttons for list management
-        btn_frame = ttk.Frame(checklist_frame)
+        btn_frame = QWidget(checklist_frame)
         btn_frame.pack(fill='x', pady=5)
 
-        ttk.Button(btn_frame, text="Add Item", command=add_item).pack(side='left', padx=2)
-        ttk.Button(btn_frame, text="Edit Item", command=edit_item).pack(side='left', padx=2)
-        ttk.Button(btn_frame, text="Delete Item", command=delete_item).pack(side='left', padx=2)
-        ttk.Button(btn_frame, text="Move Up", command=move_up).pack(side='left', padx=2)
-        ttk.Button(btn_frame, text="Move Down", command=move_down).pack(side='left', padx=2)
+        QPushButton(btn_frame, text="Add Item", command=add_item).pack(side='left', padx=2)
+        QPushButton(btn_frame, text="Edit Item", command=edit_item).pack(side='left', padx=2)
+        QPushButton(btn_frame, text="Delete Item", command=delete_item).pack(side='left', padx=2)
+        QPushButton(btn_frame, text="Move Up", command=move_up).pack(side='left', padx=2)
+        QPushButton(btn_frame, text="Move Down", command=move_down).pack(side='left', padx=2)
 
         # Special instructions
-        inst_frame = ttk.LabelFrame(dialog, text="Special Instructions", padding=10)
+        inst_frame = QLabelFrame(dialog, text="Special Instructions", padding=10)
         inst_frame.pack(fill='x', padx=10, pady=5)
-        special_instructions_text = tk.Text(inst_frame, height=3, font=('Arial', 9), wrap='word')
+        special_instructions_text = QTextEdit(inst_frame, height=3, font=('Arial', 9), wrap='word')
         special_instructions_text.pack(fill='both', expand=True)
 
         # Safety notes
-        safety_frame = ttk.LabelFrame(dialog, text="Safety Notes", padding=10)
+        safety_frame = QLabelFrame(dialog, text="Safety Notes", padding=10)
         safety_frame.pack(fill='x', padx=10, pady=5)
-        safety_notes_text = tk.Text(safety_frame, height=3, font=('Arial', 9), wrap='word')
+        safety_notes_text = QTextEdit(safety_frame, height=3, font=('Arial', 9), wrap='word')
         safety_notes_text.pack(fill='both', expand=True)
 
         # Save button
         def save_custom_template():
             template_name = template_name_var.get().strip()
             if not template_name:
-                messagebox.showerror("Error", "Please enter a template name")
+                QMessageBox.critical(self, "Error", "Please enter a template name")
                 return
 
             # Collect checklist items
@@ -7522,13 +7532,13 @@ class AITCMMSSystem:
                 checklist_items.append(step_content)
 
             if not checklist_items:
-                messagebox.showerror("Error", "Please add at least one checklist item")
+                QMessageBox.critical(self, "Error", "Please add at least one checklist item")
                 return
 
             try:
                 est_hours = float(est_hours_var.get() or 2.0)
             except ValueError:
-                messagebox.showerror("Error", "Invalid estimated hours value")
+                QMessageBox.critical(self, "Error", "Invalid estimated hours value")
                 return
 
             try:
@@ -7541,7 +7551,7 @@ class AITCMMSSystem:
                 ''', (bfm_no, template_name))
 
                 if cursor.fetchone():
-                    if not messagebox.askyesno("Template Exists",
+                    if not QMessageBox.question(self, "Template Exists",
                         f"A template named '{template_name}' already exists for {bfm_no}.\n\nOverwrite it?"):
                         return
 
@@ -7579,8 +7589,8 @@ class AITCMMSSystem:
                     ))
 
                 self.conn.commit()
-                messagebox.showinfo("Success", f"Custom PM template saved for {bfm_no}")
-                dialog.destroy()
+                QMessageBox.information(self, "Success", f"Custom PM template saved for {bfm_no}")
+                dialog.close()
 
                 # Reload templates if we're on the PM Templates tab
                 if hasattr(self, 'templates_tree'):
@@ -7588,27 +7598,27 @@ class AITCMMSSystem:
 
             except Exception as e:
                 print(f"Error saving custom template: {e}")
-                messagebox.showerror("Error", f"Failed to save template: {str(e)}")
+                QMessageBox.critical(self, "Error", f"Failed to save template: {str(e)}")
 
-        button_frame = ttk.Frame(dialog)
+        button_frame = QWidget(dialog)
         button_frame.pack(side='bottom', fill='x', padx=10, pady=10)
 
-        ttk.Button(button_frame, text="Cancel", command=dialog.destroy).pack(side='right', padx=5)
-        ttk.Button(button_frame, text="Save Custom Template",
+        QPushButton(button_frame, text="Cancel", command=dialog.destroy).pack(side='right', padx=5)
+        QPushButton(button_frame, text="Save Custom Template",
                   command=save_custom_template, style='Accent.TButton').pack(side='right', padx=5)
 
     def delete_pm_template(self):
         """Delete selected PM template"""
         selected = self.templates_tree.selection()
         if not selected:
-            messagebox.showwarning("Warning", "Please select a template to delete")
+            QMessageBox.warning(self, "Warning", "Please select a template to delete")
             return
 
         item = self.templates_tree.item(selected[0])
         bfm_no = str(item['values'][0])
         template_name = item['values'][1]
 
-        result = messagebox.askyesno("Confirm Delete",
+        result = QMessageBox.question(self, "Confirm Delete",
                                 f"Delete PM template '{template_name}' for {bfm_no}?\n\n"
                                 f"This action cannot be undone.")
 
@@ -7621,17 +7631,17 @@ class AITCMMSSystem:
                 ''', (bfm_no, template_name))
             
                 self.conn.commit()
-                messagebox.showinfo("Success", "Template deleted successfully!")
+                QMessageBox.information(self, "Success", "Template deleted successfully!")
                 self.load_pm_templates()
             
             except Exception as e:
-                messagebox.showerror("Error", f"Failed to delete template: {str(e)}")
+                QMessageBox.critical(self, "Error", f"Failed to delete template: {str(e)}")
 
     def export_custom_template_pdf(self):
         """Export custom template as PDF form"""
         selected = self.templates_tree.selection()
         if not selected:
-            messagebox.showwarning("Warning", "Please select a template to export")
+            QMessageBox.warning(self, "Warning", "Please select a template to export")
             return
 
         item = self.templates_tree.item(selected[0])
@@ -7654,7 +7664,7 @@ class AITCMMSSystem:
             equipment_data = cursor.fetchone()
 
             if not equipment_data:
-                messagebox.showerror("Error", "Equipment not found")
+                QMessageBox.critical(self, "Error", "Equipment not found")
                 return
 
             # Load default checklist items
@@ -7695,7 +7705,7 @@ class AITCMMSSystem:
 
             template_data = cursor.fetchone()
             if not template_data:
-                messagebox.showerror("Error", f"Template not found for BFM: {bfm_no}, Name: {template_name}\n\nPlease check that the template exists in the database.")
+                QMessageBox.critical(self, "Error", f"Template not found for BFM: {bfm_no}, Name: {template_name}\n\nPlease check that the template exists in the database.")
                 return
 
         try:
@@ -7705,10 +7715,10 @@ class AITCMMSSystem:
             # Create custom PDF using the template data
             self.create_custom_pm_template_pdf(filename, template_data)
 
-            messagebox.showinfo("Success", f"PM template exported to: {filename}")
+            QMessageBox.information(self, "Success", f"PM template exported to: {filename}")
 
         except Exception as e:
-            messagebox.showerror("Error", f"Failed to export template: {str(e)}")
+            QMessageBox.critical(self, "Error", f"Failed to export template: {str(e)}")
 
     def create_custom_pm_template_pdf(self, filename, template_data):
         """Create PDF with custom PM template"""
@@ -7993,28 +8003,28 @@ class AITCMMSSystem:
 
     def create_equipment_pm_lookup_with_templates(self):
         """Enhanced equipment lookup that shows custom templates"""
-        dialog = tk.Toplevel(self.root)
-        dialog.title("Equipment PM Schedule & Templates")
+        dialog = QDialog(self.root)
+        dialog.setWindowTitle("Equipment PM Schedule & Templates")
         dialog.geometry("900x700")
-        dialog.transient(self.root)
+        dialog.setParent(self.root)
         dialog.grab_set()
     
         # Equipment search
-        search_frame = ttk.LabelFrame(dialog, text="Equipment Search", padding=15)
+        search_frame = QLabelFrame(dialog, text="Equipment Search", padding=15)
         search_frame.pack(fill='x', padx=10, pady=5)
     
-        ttk.Label(search_frame, text="BFM Equipment Number:", font=('Arial', 10, 'bold')).grid(row=0, column=0, sticky='w', pady=5)
+        QLabel(search_frame, text="BFM Equipment Number:", font=('Arial', 10, 'bold')).grid(row=0, column=0, sticky='w', pady=5)
     
         bfm_var = tk.StringVar()
-        bfm_entry = ttk.Entry(search_frame, textvariable=bfm_var, width=20, font=('Arial', 11))
+        bfm_entry = QLineEdit(search_frame, textvariable=bfm_var, width=20, font=('Arial', 11))
         bfm_entry.grid(row=0, column=1, padx=10, pady=5)
     
-        search_btn = ttk.Button(search_frame, text="Look Up Equipment", 
+        search_btn = QPushButton(search_frame, text="Look Up Equipment", 
                             command=lambda: self.lookup_equipment_with_templates(bfm_var.get().strip(), results_frame))
         search_btn.grid(row=0, column=2, padx=10, pady=5)
     
         # Results frame
-        results_frame = ttk.LabelFrame(dialog, text="Equipment Information & Templates", padding=10)
+        results_frame = QLabelFrame(dialog, text="Equipment Information & Templates", padding=10)
         results_frame.pack(fill='both', expand=True, padx=10, pady=5)
     
         bfm_entry.focus_set()
@@ -8023,7 +8033,7 @@ class AITCMMSSystem:
     def lookup_equipment_with_templates(self, bfm_no, parent_frame):
         """Lookup equipment with custom template information"""
         if not bfm_no:
-            messagebox.showwarning("Warning", "Please enter a BFM Equipment Number")
+            QMessageBox.warning(self, "Warning", "Please enter a BFM Equipment Number")
             return
     
         try:
@@ -8031,7 +8041,7 @@ class AITCMMSSystem:
         
             # Clear previous results
             for widget in parent_frame.winfo_children():
-                widget.destroy()
+                widget.close()
         
             # Get equipment info
             cursor.execute('''
@@ -8042,7 +8052,7 @@ class AITCMMSSystem:
         
             equipment_data = cursor.fetchone()
             if not equipment_data:
-                error_label = ttk.Label(parent_frame, 
+                error_label = QLabel(parent_frame, 
                                     text=f"Equipment '{bfm_no}' not found in database",
                                     font=('Arial', 12, 'bold'), foreground='red')
                 error_label.pack(pady=20)
@@ -8054,7 +8064,7 @@ class AITCMMSSystem:
             header_text += f"Location: {equipment_data[2] or 'N/A'}\n"
             header_text += f"Status: {equipment_data[3] or 'Active'}"
         
-            header_label = ttk.Label(parent_frame, text=header_text, font=('Arial', 10))
+            header_label = QLabel(parent_frame, text=header_text, font=('Arial', 10))
             header_label.pack(pady=10)
         
             # Get custom templates
@@ -8068,7 +8078,7 @@ class AITCMMSSystem:
             templates = cursor.fetchall()
         
             if templates:
-                templates_frame = ttk.LabelFrame(parent_frame, text="Custom PM Templates", padding=10)
+                templates_frame = QLabelFrame(parent_frame, text="Custom PM Templates", padding=10)
                 templates_frame.pack(fill='x', pady=10)
             
                 for template in templates:
@@ -8080,9 +8090,9 @@ class AITCMMSSystem:
                         step_count = 0
                 
                     template_text = f"- {name} ({pm_type} PM) - {step_count} steps, {est_hours:.1f}h estimated"
-                    ttk.Label(templates_frame, text=template_text, font=('Arial', 9)).pack(anchor='w')
+                    QLabel(templates_frame, text=template_text, font=('Arial', 9)).pack(anchor='w')
             else:
-                no_templates_label = ttk.Label(parent_frame, 
+                no_templates_label = QLabel(parent_frame, 
                                             text="No custom PM templates found for this equipment",
                                             font=('Arial', 10), foreground='orange')
                 no_templates_label.pack(pady=10)
@@ -8091,7 +8101,7 @@ class AITCMMSSystem:
             self.lookup_equipment_pm_schedule(bfm_no, parent_frame)
         
         except Exception as e:
-            error_label = ttk.Label(parent_frame, 
+            error_label = QLabel(parent_frame, 
                                 text=f"Error looking up equipment: {str(e)}", 
                                 font=('Arial', 10), foreground='red')
             error_label.pack(pady=20) 
@@ -8617,22 +8627,22 @@ class AITCMMSSystem:
     def create_gui(self):
         """Create the main GUI interface based on user role"""
         # Create style
-        style = ttk.Style()
+        style = None  # QApplication.style()
         style.theme_use('clam')
 
         # Create menu bar (available to all users)
-        menubar = tk.Menu(self.root)
+        menubar = QMenu(self.root)
         self.root.config(menu=menubar)
 
         # Account menu
-        account_menu = tk.Menu(menubar, tearoff=0)
+        account_menu = QMenu(menubar, tearoff=0)
         menubar.add_cascade(label="Account", menu=account_menu)
         account_menu.add_command(label="Change Password", command=self.open_change_password)
         account_menu.add_separator()
         account_menu.add_command(label="Logout", command=self.logout)
 
         # Tools menu - NEW MODULAR FEATURES
-        tools_menu = tk.Menu(menubar, tearoff=0)
+        tools_menu = QMenu(menubar, tearoff=0)
         menubar.add_cascade(label="Tools", menu=tools_menu)
 
         # Equipment tools
@@ -8660,25 +8670,25 @@ class AITCMMSSystem:
 
         # Toolbar frame at the top (for Manager actions)
         if self.current_user_role == 'Manager':
-            toolbar_frame = ttk.Frame(self.root, relief='raised', borderwidth=1)
+            toolbar_frame = QWidget(self.root, relief='raised', borderwidth=1)
             toolbar_frame.pack(side='top', fill='x', padx=5, pady=5)
 
             # Left side - Title
-            ttk.Label(toolbar_frame, text="Manager Tools:",
+            QLabel(toolbar_frame, text="Manager Tools:",
                      font=('Arial', 10, 'bold')).pack(side='left', padx=10)
 
             # Right side - Action buttons
-            ttk.Button(toolbar_frame, text="👥 Manage Users",
+            QPushButton(toolbar_frame, text="👥 Manage Users",
                       command=self.open_user_management).pack(side='left', padx=5)
 
-            ttk.Button(toolbar_frame, text="Switch to Technician View",
+            QPushButton(toolbar_frame, text="Switch to Technician View",
                       command=self.switch_to_technician_view).pack(side='left', padx=5)
 
             # Separator
-            ttk.Separator(self.root, orient='horizontal').pack(fill='x', padx=5)
+            QFrame(self.root, orient='horizontal').pack(fill='x', padx=5)
 
         # Main notebook for tabs
-        self.notebook = ttk.Notebook(self.root)
+        self.notebook = QTabWidget(self.root)
         self.notebook.pack(fill='both', expand=True, padx=10, pady=10)
 
         # Create tabs based on role
@@ -8693,10 +8703,10 @@ class AITCMMSSystem:
             self.create_technician_tabs()
 
         # Status bar with user info
-        status_frame = ttk.Frame(self.root)
+        status_frame = QWidget(self.root)
         status_frame.pack(side='bottom', fill='x')
 
-        self.status_bar = ttk.Label(status_frame, text=f"AIT CMMS Ready - Logged in as: {self.user_name} ({self.current_user_role})",
+        self.status_bar = QLabel(status_frame, text=f"AIT CMMS Ready - Logged in as: {self.user_name} ({self.current_user_role})",
                                     relief='sunken')
         self.status_bar.pack(side='left', fill='x', expand=True)
 
@@ -8724,11 +8734,11 @@ class AITCMMSSystem:
 
     def create_technician_info_tab(self):
         """Create an info tab for technicians"""
-        info_frame = ttk.Frame(self.notebook)
+        info_frame = QWidget(self.notebook)
         self.notebook.add(info_frame, text="System Info")
     
         # Welcome message
-        welcome_frame = ttk.LabelFrame(info_frame, text="Welcome to AIT CMMS", padding=20)
+        welcome_frame = QLabelFrame(info_frame, text="Welcome to AIT CMMS", padding=20)
         welcome_frame.pack(fill='both', expand=True, padx=20, pady=20)
     
         welcome_text = f"""
@@ -8764,17 +8774,17 @@ class AITCMMSSystem:
     - Coordinate with team members through CM system
     """
     
-        info_label = ttk.Label(welcome_frame, text=welcome_text, 
+        info_label = QLabel(welcome_frame, text=welcome_text, 
                             font=('Arial', 11), justify='left')
         info_label.pack(anchor='w')
     
         # Quick access buttons
-        buttons_frame = ttk.Frame(welcome_frame)
+        buttons_frame = QWidget(welcome_frame)
         buttons_frame.pack(fill='x', pady=20)
     
-        ttk.Button(buttons_frame, text="Create New CM",
+        QPushButton(buttons_frame, text="Create New CM",
                 command=self.create_cm_dialog).pack(side='left', padx=10)
-        ttk.Button(buttons_frame, text="View My Assigned CMs",
+        QPushButton(buttons_frame, text="View My Assigned CMs",
                 command=self.show_my_cms).pack(side='left', padx=10)
 
     def create_parts_coordinator_tabs(self):
@@ -8788,11 +8798,11 @@ class AITCMMSSystem:
 
     def create_parts_coordinator_info_tab(self):
         """Create an info tab for parts coordinator"""
-        info_frame = ttk.Frame(self.notebook)
+        info_frame = QWidget(self.notebook)
         self.notebook.add(info_frame, text="System Info")
 
         # Welcome message
-        welcome_frame = ttk.LabelFrame(info_frame, text="Welcome to AIT CMMS", padding=20)
+        welcome_frame = QLabelFrame(info_frame, text="Welcome to AIT CMMS", padding=20)
         welcome_frame.pack(fill='both', expand=True, padx=20, pady=20)
 
         welcome_text = f"""
@@ -8832,10 +8842,10 @@ class AITCMMSSystem:
     - You can change your password using the menu at the top
     """
 
-        info_label = ttk.Label(welcome_frame, text=welcome_text,
+        info_label = QLabel(welcome_frame, text=welcome_text,
                             font=('Arial', 11), justify='left')
         info_label.pack(anchor='w')
-        ttk.Button(buttons_frame, text="Refresh All CMs", 
+        QPushButton(buttons_frame, text="Refresh All CMs", 
                 command=self.load_corrective_maintenance).pack(side='left', padx=10)
 
     def show_my_cms(self):
@@ -8855,15 +8865,15 @@ class AITCMMSSystem:
             my_cms = cursor.fetchall()
         
             # Create dialog to show results
-            dialog = tk.Toplevel(self.root)
-            dialog.title(f"My CMs - {self.user_name}")
+            dialog = QDialog(self.root)
+            dialog.setWindowTitle(f"My CMs - {self.user_name}")
             dialog.geometry("800x400")
-            dialog.transient(self.root)
+            dialog.setParent(self.root)
             dialog.grab_set()
         
             if my_cms:
                 # Create tree to display CMs
-                tree = ttk.Treeview(dialog, columns=('CM#', 'Equipment', 'Description', 'Priority', 'Status', 'Date'), 
+                tree = QTreeWidget(dialog, columns=('CM#', 'Equipment', 'Description', 'Priority', 'Status', 'Date'), 
                                 show='headings')
             
                 for col in ('CM#', 'Equipment', 'Description', 'Priority', 'Status', 'Date'):
@@ -8877,18 +8887,18 @@ class AITCMMSSystem:
             
                 tree.pack(fill='both', expand=True, padx=10, pady=10)
             else:
-                ttk.Label(dialog, text=f"No CMs assigned to {self.user_name}", 
+                QLabel(dialog, text=f"No CMs assigned to {self.user_name}", 
                         font=('Arial', 12)).pack(pady=50)
         
-            ttk.Button(dialog, text="Close", command=dialog.destroy).pack(pady=10)
+            QPushButton(dialog, text="Close", command=dialog.destroy).pack(pady=10)
         
         except Exception as e:
-            messagebox.showerror("Error", f"Failed to load your CMs: {str(e)}")
+            QMessageBox.critical(self, "Error", f"Failed to load your CMs: {str(e)}")
 
     def open_user_management(self):
         """Open user management dialog (Manager only)"""
         if self.current_user_role != 'Manager':
-            messagebox.showerror("Access Denied", "Only managers can access user management.")
+            QMessageBox.critical(self, "Access Denied", "Only managers can access user management.")
             return
 
         try:
@@ -8900,7 +8910,7 @@ class AITCMMSSystem:
             print("Technicians list refreshed after user management")
 
         except Exception as e:
-            messagebox.showerror("Error", f"Failed to open user management: {e}")
+            QMessageBox.critical(self, "Error", f"Failed to open user management: {e}")
 
     def open_change_password(self):
         """Open password change dialog (available to all users)"""
@@ -8921,15 +8931,15 @@ class AITCMMSSystem:
                     username = result['username'] if isinstance(result, dict) else result[0]
                     show_password_change_dialog(self.root, self.user_name, username)
                 else:
-                    messagebox.showerror("Error", "Could not retrieve user information")
+                    QMessageBox.critical(self, "Error", "Could not retrieve user information")
 
         except Exception as e:
-            messagebox.showerror("Error", f"Failed to open password change dialog: {e}")
+            QMessageBox.critical(self, "Error", f"Failed to open password change dialog: {e}")
             print(f"Password change dialog error: {e}")
 
     def logout(self):
         """Logout current user and show login dialog"""
-        result = messagebox.askyesno("Logout",
+        result = QMessageBox.question(self, "Logout",
                                      f"Logout {self.user_name}?\n\n"
                                      "This will close the application.\n"
                                      "You'll need to login again to continue.")
@@ -8944,14 +8954,14 @@ class AITCMMSSystem:
                 print(f"Error ending session: {e}")
             finally:
                 # Close the application
-                self.root.destroy()
+                self.root.close()
 
     def switch_to_technician_view(self):
         """Switch to technician view for testing (Manager only)"""
         if self.current_user_role != 'Manager':
             return
         
-        result = messagebox.askyesno("Switch View", 
+        result = QMessageBox.question(self, "Switch View", 
                                     "Switch to Technician view?\n\n"
                                     "This will hide all manager functions and only show CM access.\n"
                                     "You'll need to restart the application to get back to Manager view.")
@@ -8963,7 +8973,7 @@ class AITCMMSSystem:
         
             # Recreate GUI
             for widget in self.notebook.winfo_children():
-                widget.destroy()
+                widget.close()
         
             self.create_technician_tabs()
             self.status_bar.config(text=f"AIT CMMS - Logged in as: {self.user_name} ({self.current_user_role})")
@@ -8975,7 +8985,7 @@ class AITCMMSSystem:
         """Standardize all dates in the database to YYYY-MM-DD format"""
         
         # Confirmation dialog
-        result = messagebox.askyesno(
+        result = QMessageBox.question(self, 
             "Confirm Date Standardization",
             "This will standardize ALL dates in the database to YYYY-MM-DD format.\n\n"
             "Tables affected:\n"
@@ -8994,20 +9004,20 @@ class AITCMMSSystem:
         
         try:
             # Create progress dialog
-            progress_dialog = tk.Toplevel(self.root)
-            progress_dialog.title("Standardizing Dates...")
+            progress_dialog = QDialog(self.root)
+            progress_dialog.setWindowTitle("Standardizing Dates...")
             progress_dialog.geometry("400x150")
-            progress_dialog.transient(self.root)
+            progress_dialog.setParent(self.root)
             progress_dialog.grab_set()
             
-            ttk.Label(progress_dialog, text="Standardizing dates in database...", 
+            QLabel(progress_dialog, text="Standardizing dates in database...", 
                      font=('Arial', 12)).pack(pady=20)
             
             progress_var = tk.StringVar(value="Initializing...")
-            progress_label = ttk.Label(progress_dialog, textvariable=progress_var)
+            progress_label = QLabel(progress_dialog, textvariable=progress_var)
             progress_label.pack(pady=10)
             
-            progress_bar = ttk.Progressbar(progress_dialog, mode='indeterminate')
+            progress_bar = QProgressBar(progress_dialog, mode='indeterminate')
             progress_bar.pack(pady=10, padx=20, fill='x')
             progress_bar.start()
             
@@ -9022,7 +9032,7 @@ class AITCMMSSystem:
             total_updated, errors = standardizer.standardize_all_dates()
             
             progress_bar.stop()
-            progress_dialog.destroy()
+            progress_dialog.close()
             
             # Show results
             if errors:
@@ -9031,10 +9041,10 @@ class AITCMMSSystem:
                 if len(errors) > 10:
                     error_msg += f"\n... and {len(errors) - 10} more errors"
                 
-                messagebox.showwarning("Standardization Complete (With Errors)", 
+                QMessageBox.warning(self, "Standardization Complete (With Errors)", 
                                      f"Updated {total_updated} records.\n\n{error_msg}")
             else:
-                messagebox.showinfo("Success", 
+                QMessageBox.information(self, "Success", 
                                   f"Date standardization completed successfully!\n\n"
                                   f"Updated {total_updated} date records to YYYY-MM-DD format.\n\n"
                                   f"All dates are now standardized.")
@@ -9051,15 +9061,15 @@ class AITCMMSSystem:
             
         except Exception as e:
             if 'progress_dialog' in locals():
-                progress_dialog.destroy()
-            messagebox.showerror("Error", f"Failed to standardize dates: {str(e)}")
+                progress_dialog.close()
+            QMessageBox.critical(self, "Error", f"Failed to standardize dates: {str(e)}")
     
     def add_date_standardization_button(self):
         """Add date standardization button to equipment tab"""
         # Find the controls frame in equipment tab
         for widget in self.equipment_frame.winfo_children():
-            if isinstance(widget, ttk.LabelFrame) and "Equipment Controls" in widget['text']:
-                ttk.Button(widget, text="Standardize All Dates (YYYY-MM-DD)", 
+            if isinstance(widget, QLabelFrame) and "Equipment Controls" in widget['text']:
+                QPushButton(widget, text="Standardize All Dates (YYYY-MM-DD)", 
                           command=self.standardize_all_database_dates,
                           width=30).pack(side='left', padx=5)
                 break
@@ -9068,77 +9078,77 @@ class AITCMMSSystem:
 
     def create_equipment_tab(self):
         """Equipment management and data import tab"""
-        self.equipment_frame = ttk.Frame(self.notebook)
+        self.equipment_frame = QWidget(self.notebook)
         self.notebook.add(self.equipment_frame, text="Equipment Management")
         
         # Controls frame
-        controls_frame = ttk.LabelFrame(self.equipment_frame, text="Equipment Controls", padding=10)
+        controls_frame = QLabelFrame(self.equipment_frame, text="Equipment Controls", padding=10)
         controls_frame.pack(fill='x', padx=10, pady=5)
         
         # Add statistics frame after controls_frame
-        stats_frame = ttk.LabelFrame(self.equipment_frame, text="Equipment Statistics", padding=10)
+        stats_frame = QLabelFrame(self.equipment_frame, text="Equipment Statistics", padding=10)
         stats_frame.pack(fill='x', padx=10, pady=5)
 
         # Statistics labels
-        self.stats_total_label = ttk.Label(stats_frame, text="Total Assets: 0", font=('Arial', 10, 'bold'))
+        self.stats_total_label = QLabel(stats_frame, text="Total Assets: 0", font=('Arial', 10, 'bold'))
         self.stats_total_label.pack(side='left', padx=20)
 
-        self.stats_cf_label = ttk.Label(stats_frame, text="Cannot Find: 0", font=('Arial', 10, 'bold'), foreground='red')
+        self.stats_cf_label = QLabel(stats_frame, text="Cannot Find: 0", font=('Arial', 10, 'bold'), foreground='red')
         self.stats_cf_label.pack(side='left', padx=20)
 
-        self.stats_rtf_label = ttk.Label(stats_frame, text="Run to Failure: 0", font=('Arial', 10, 'bold'), foreground='orange')
+        self.stats_rtf_label = QLabel(stats_frame, text="Run to Failure: 0", font=('Arial', 10, 'bold'), foreground='orange')
         self.stats_rtf_label.pack(side='left', padx=20)
 
-        self.stats_active_label = ttk.Label(stats_frame, text="Active Assets: 0", font=('Arial', 10, 'bold'), foreground='green')
+        self.stats_active_label = QLabel(stats_frame, text="Active Assets: 0", font=('Arial', 10, 'bold'), foreground='green')
         self.stats_active_label.pack(side='left', padx=20)
 
         # Refresh stats button
-        ttk.Button(stats_frame, text="Refresh Stats", 
+        QPushButton(stats_frame, text="Refresh Stats", 
                 command=self.update_equipment_statistics).pack(side='right', padx=5)
         
         
-        ttk.Button(controls_frame, text="Import Equipment CSV", 
+        QPushButton(controls_frame, text="Import Equipment CSV", 
                   command=self.import_equipment_csv).pack(side='left', padx=5)
-        ttk.Button(controls_frame, text="Add Equipment", 
+        QPushButton(controls_frame, text="Add Equipment", 
                   command=self.add_equipment_dialog).pack(side='left', padx=5)
-        ttk.Button(controls_frame, text="Edit Equipment", 
+        QPushButton(controls_frame, text="Edit Equipment", 
                   command=self.edit_equipment_dialog).pack(side='left', padx=5)
-        ttk.Button(controls_frame, text="Refresh List", 
+        QPushButton(controls_frame, text="Refresh List", 
                   command=self.refresh_equipment_list).pack(side='left', padx=5)
-        ttk.Button(controls_frame, text="Export Equipment", 
+        QPushButton(controls_frame, text="Export Equipment", 
                   command=self.export_equipment_list).pack(side='left', padx=5)
-        ttk.Button(controls_frame, text="Bulk Edit PM Cycles", 
+        QPushButton(controls_frame, text="Bulk Edit PM Cycles", 
                   command=self.bulk_edit_pm_cycles).pack(side='left', padx=5)
         
         
         # Search frame
-        search_frame = ttk.Frame(self.equipment_frame)
+        search_frame = QWidget(self.equipment_frame)
         search_frame.pack(fill='x', padx=10, pady=5)
 
-        ttk.Label(search_frame, text="Search Equipment:").pack(side='left', padx=5)
+        QLabel(search_frame, text="Search Equipment:").pack(side='left', padx=5)
         self.equipment_search_var = tk.StringVar()
-        self.equipment_search_entry = ttk.Entry(search_frame, textvariable=self.equipment_search_var, width=30)
+        self.equipment_search_entry = QLineEdit(search_frame, textvariable=self.equipment_search_var, width=30)
         self.equipment_search_entry.pack(side='left', padx=5)
         # Bind KeyRelease event to trigger filtering as user types
         self.equipment_search_entry.bind('<KeyRelease>', self.filter_equipment_list)
 
         # Location filter
-        ttk.Label(search_frame, text="Filter by Location:").pack(side='left', padx=(20, 5))
+        QLabel(search_frame, text="Filter by Location:").pack(side='left', padx=(20, 5))
         self.equipment_location_var = tk.StringVar(value="All Locations")
-        self.equipment_location_combo = ttk.Combobox(search_frame, textvariable=self.equipment_location_var, width=25, state='readonly')
+        self.equipment_location_combo = QComboBox(search_frame, textvariable=self.equipment_location_var, width=25, state='readonly')
         self.equipment_location_combo.pack(side='left', padx=5)
         self.equipment_location_combo.bind('<<ComboboxSelected>>', self.filter_equipment_list)
 
         # Clear filters button
-        ttk.Button(search_frame, text="Clear Filters",
+        QPushButton(search_frame, text="Clear Filters",
                   command=self.clear_equipment_filters).pack(side='left', padx=5)
         
         # Equipment list
-        list_frame = ttk.Frame(self.equipment_frame)
+        list_frame = QWidget(self.equipment_frame)
         list_frame.pack(fill='both', expand=True, padx=10, pady=5)
         
         # Treeview with scrollbars
-        self.equipment_tree = ttk.Treeview(list_frame, 
+        self.equipment_tree = QTreeWidget(list_frame, 
                                          columns=('SAP', 'BFM', 'Description', 'Location', 'LIN', 'Monthly', 'Six Month', 'Annual', 'Status'),
                                          show='headings', height=20)
         self.equipment_tree.configure(selectmode='extended')  # Enable multi-select
@@ -9160,8 +9170,8 @@ class AITCMMSSystem:
             self.equipment_tree.column(col, width=width)
         
         # Scrollbars
-        v_scrollbar = ttk.Scrollbar(list_frame, orient='vertical', command=self.equipment_tree.yview)
-        h_scrollbar = ttk.Scrollbar(list_frame, orient='horizontal', command=self.equipment_tree.xview)
+        v_scrollbar = QScrollArea(list_frame, orient='vertical', command=self.equipment_tree.yview)
+        h_scrollbar = QScrollArea(list_frame, orient='horizontal', command=self.equipment_tree.xview)
         self.equipment_tree.configure(yscrollcommand=v_scrollbar.set, xscrollcommand=h_scrollbar.set)
         
         # Pack treeview and scrollbars
@@ -9268,25 +9278,25 @@ class AITCMMSSystem:
 
         except Exception as e:
             print(f"Error updating equipment statistics: {e}")
-            messagebox.showerror("Error", f"Failed to update equipment statistics: {str(e)}")
+            QMessageBox.critical(self, "Error", f"Failed to update equipment statistics: {str(e)}")
     
     def create_pm_scheduling_tab(self):
         """PM Scheduling and assignment tab"""
-        self.pm_schedule_frame = ttk.Frame(self.notebook)
+        self.pm_schedule_frame = QWidget(self.notebook)
         self.notebook.add(self.pm_schedule_frame, text="PM Scheduling")
         
         # Controls
-        controls_frame = ttk.LabelFrame(self.pm_schedule_frame, text="PM Scheduling Controls", padding=10)
+        controls_frame = QLabelFrame(self.pm_schedule_frame, text="PM Scheduling Controls", padding=10)
         controls_frame.pack(fill='x', padx=10, pady=5)
         
         
        
         # Week selection with dropdown of available weeks
-        ttk.Label(controls_frame, text="Week Starting:").grid(row=0, column=0, sticky='w', padx=5)
+        QLabel(controls_frame, text="Week Starting:").grid(row=0, column=0, sticky='w', padx=5)
         self.week_start_var = tk.StringVar(value=self.current_week_start.strftime('%Y-%m-%d'))
 
         # Create combobox instead of entry
-        self.week_combo = ttk.Combobox(controls_frame, textvariable=self.week_start_var, width=12)
+        self.week_combo = QComboBox(controls_frame, textvariable=self.week_start_var, width=12)
         self.week_combo.grid(row=0, column=1, padx=5)
 
         # Bind selection change to refresh display
@@ -9295,29 +9305,29 @@ class AITCMMSSystem:
         # Populate with available weeks
         self.populate_week_selector()
         
-        ttk.Button(controls_frame, text="Generate Weekly Schedule",
+        QPushButton(controls_frame, text="Generate Weekly Schedule",
                   command=self.generate_weekly_assignments).grid(row=0, column=2, padx=5)
-        ttk.Button(controls_frame, text="Print PM Forms",
+        QPushButton(controls_frame, text="Print PM Forms",
                   command=self.print_weekly_pm_forms).grid(row=0, column=3, padx=5)
-        ttk.Button(controls_frame, text="Export Schedule",
+        QPushButton(controls_frame, text="Export Schedule",
                   command=self.export_weekly_schedule).grid(row=0, column=4, padx=5)
 
         # Technician Exclusion Controls
-        exclusion_frame = ttk.LabelFrame(self.pm_schedule_frame, text="Exclude Technicians from This Week's Schedule", padding=10)
+        exclusion_frame = QLabelFrame(self.pm_schedule_frame, text="Exclude Technicians from This Week's Schedule", padding=10)
         exclusion_frame.pack(fill='x', padx=10, pady=5)
 
-        ttk.Label(exclusion_frame, text="Select technicians to exclude (e.g., vacation, out sick):").pack(anchor='w', pady=5)
+        QLabel(exclusion_frame, text="Select technicians to exclude (e.g., vacation, out sick):").pack(anchor='w', pady=5)
 
         # Create a frame for the listbox and scrollbar
-        listbox_frame = ttk.Frame(exclusion_frame)
+        listbox_frame = QWidget(exclusion_frame)
         listbox_frame.pack(fill='both', expand=False, pady=5)
 
         # Create listbox with multiple selection
-        self.excluded_technicians_listbox = tk.Listbox(listbox_frame, selectmode='multiple', height=6, exportselection=False)
+        self.excluded_technicians_listbox = QListWidget(listbox_frame, selectmode='multiple', height=6, exportselection=False)
         self.excluded_technicians_listbox.pack(side='left', fill='both', expand=True)
 
         # Add scrollbar
-        scrollbar = ttk.Scrollbar(listbox_frame, orient='vertical', command=self.excluded_technicians_listbox.yview)
+        scrollbar = QScrollArea(listbox_frame, orient='vertical', command=self.excluded_technicians_listbox.yview)
         scrollbar.pack(side='right', fill='y')
         self.excluded_technicians_listbox.config(yscrollcommand=scrollbar.set)
 
@@ -9325,26 +9335,26 @@ class AITCMMSSystem:
         self.populate_technician_exclusion_list()
 
         # Add helper buttons
-        button_frame = ttk.Frame(exclusion_frame)
+        button_frame = QWidget(exclusion_frame)
         button_frame.pack(fill='x', pady=5)
-        ttk.Button(button_frame, text="Clear All Exclusions", command=self.clear_all_exclusions).pack(side='left', padx=5)
+        QPushButton(button_frame, text="Clear All Exclusions", command=self.clear_all_exclusions).pack(side='left', padx=5)
 
         # Schedule display
-        schedule_frame = ttk.LabelFrame(self.pm_schedule_frame, text="Weekly PM Schedule", padding=10)
+        schedule_frame = QLabelFrame(self.pm_schedule_frame, text="Weekly PM Schedule", padding=10)
         schedule_frame.pack(fill='both', expand=True, padx=10, pady=5)
         
         # Technician tabs
-        self.technician_notebook = ttk.Notebook(schedule_frame)
+        self.technician_notebook = QTabWidget(schedule_frame)
         self.technician_notebook.pack(fill='both', expand=True)
         
         # Create tabs for each technician
         self.technician_trees = {}
         for tech in self.technicians:
-            tech_frame = ttk.Frame(self.technician_notebook)
+            tech_frame = QWidget(self.technician_notebook)
             self.technician_notebook.add(tech_frame, text=tech)
 
             # Technician's schedule tree
-            tech_tree = ttk.Treeview(tech_frame,
+            tech_tree = QTreeWidget(tech_frame,
                                    columns=('BFM', 'Description', 'PM Type', 'Due Date', 'Status'),
                                    show='headings')
 
@@ -9366,29 +9376,29 @@ class AITCMMSSystem:
     
     def create_pm_completion_tab(self):
         """PM Completion entry tab"""
-        self.pm_completion_frame = ttk.Frame(self.notebook)
+        self.pm_completion_frame = QWidget(self.notebook)
         self.notebook.add(self.pm_completion_frame, text="PM Completion")
         
         # Completion form
-        form_frame = ttk.LabelFrame(self.pm_completion_frame, text="PM Completion Entry", padding=15)
+        form_frame = QLabelFrame(self.pm_completion_frame, text="PM Completion Entry", padding=15)
         form_frame.pack(fill='x', padx=10, pady=5)
         
         # Form fields (matching your PM form layout)
         row = 0
         
         # Equipment selection
-        ttk.Label(form_frame, text="BFM Equipment Number:").grid(row=row, column=0, sticky='w', pady=5)
+        QLabel(form_frame, text="BFM Equipment Number:").grid(row=row, column=0, sticky='w', pady=5)
         self.completion_bfm_var = tk.StringVar()
-        bfm_combo = ttk.Combobox(form_frame, textvariable=self.completion_bfm_var, width=20)
+        bfm_combo = QComboBox(form_frame, textvariable=self.completion_bfm_var, width=20)
         bfm_combo.grid(row=row, column=1, sticky='w', padx=5, pady=5)
         bfm_combo.bind('<KeyRelease>', self.update_equipment_suggestions)
         self.bfm_combo = bfm_combo
         row += 1
         
         # PM Type
-        ttk.Label(form_frame, text="PM Type:").grid(row=row, column=0, sticky='w', pady=5)
+        QLabel(form_frame, text="PM Type:").grid(row=row, column=0, sticky='w', pady=5)
         self.pm_type_var = tk.StringVar()
-        pm_type_combo = ttk.Combobox(form_frame, textvariable=self.pm_type_var, 
+        pm_type_combo = QComboBox(form_frame, textvariable=self.pm_type_var, 
                                    values=['Monthly', 'Six Month', 'Annual', 'CANNOT FIND', 'Run to Failure'], width=20)
         # Bind PM type and equipment changes to template lookup
         pm_type_combo.bind('<<ComboboxSelected>>', lambda e: self.update_pm_completion_form_with_template())
@@ -9397,77 +9407,77 @@ class AITCMMSSystem:
         row += 1
         
         # Technician
-        ttk.Label(form_frame, text="Maintenance Technician:").grid(row=row, column=0, sticky='w', pady=5)
+        QLabel(form_frame, text="Maintenance Technician:").grid(row=row, column=0, sticky='w', pady=5)
         self.completion_tech_var = tk.StringVar()
-        tech_combo = ttk.Combobox(form_frame, textvariable=self.completion_tech_var, 
+        tech_combo = QComboBox(form_frame, textvariable=self.completion_tech_var, 
                                 values=self.technicians, width=20)
         tech_combo.grid(row=row, column=1, sticky='w', padx=5, pady=5)
         row += 1
         
         # Labor time
-        ttk.Label(form_frame, text="Labor Time:").grid(row=row, column=0, sticky='w', pady=5)
-        time_frame = ttk.Frame(form_frame)
+        QLabel(form_frame, text="Labor Time:").grid(row=row, column=0, sticky='w', pady=5)
+        time_frame = QWidget(form_frame)
         time_frame.grid(row=row, column=1, sticky='w', padx=5, pady=5)
         
         self.labor_hours_var = tk.StringVar(value="0")
-        ttk.Entry(time_frame, textvariable=self.labor_hours_var, width=5).pack(side='left')
-        ttk.Label(time_frame, text="hours").pack(side='left', padx=5)
+        QLineEdit(time_frame, textvariable=self.labor_hours_var, width=5).pack(side='left')
+        QLabel(time_frame, text="hours").pack(side='left', padx=5)
         
         self.labor_minutes_var = tk.StringVar(value="0")
-        ttk.Entry(time_frame, textvariable=self.labor_minutes_var, width=5).pack(side='left')
-        ttk.Label(time_frame, text="minutes").pack(side='left', padx=5)
+        QLineEdit(time_frame, textvariable=self.labor_minutes_var, width=5).pack(side='left')
+        QLabel(time_frame, text="minutes").pack(side='left', padx=5)
         row += 1
         
         # PM Due Date
-        ttk.Label(form_frame, text="PM Due Date:").grid(row=row, column=0, sticky='w', pady=5)
+        QLabel(form_frame, text="PM Due Date:").grid(row=row, column=0, sticky='w', pady=5)
         self.pm_due_date_var = tk.StringVar()
-        ttk.Entry(form_frame, textvariable=self.pm_due_date_var, width=20).grid(row=row, column=1, sticky='w', padx=5, pady=5)
+        QLineEdit(form_frame, textvariable=self.pm_due_date_var, width=20).grid(row=row, column=1, sticky='w', padx=5, pady=5)
         row += 1
         
         # Special Equipment
-        ttk.Label(form_frame, text="Special Equipment Used:").grid(row=row, column=0, sticky='w', pady=5)
+        QLabel(form_frame, text="Special Equipment Used:").grid(row=row, column=0, sticky='w', pady=5)
         self.special_equipment_var = tk.StringVar()
-        ttk.Entry(form_frame, textvariable=self.special_equipment_var, width=40).grid(row=row, column=1, sticky='w', padx=5, pady=5)
+        QLineEdit(form_frame, textvariable=self.special_equipment_var, width=40).grid(row=row, column=1, sticky='w', padx=5, pady=5)
         row += 1
         
         # Notes
-        ttk.Label(form_frame, text="Notes from Technician:").grid(row=row, column=0, sticky='nw', pady=5)
-        self.notes_text = tk.Text(form_frame, width=50, height=4)
+        QLabel(form_frame, text="Notes from Technician:").grid(row=row, column=0, sticky='nw', pady=5)
+        self.notes_text = QTextEdit(form_frame, width=50, height=4)
         self.notes_text.grid(row=row, column=1, sticky='w', padx=5, pady=5)
         row += 1
         
         # Next Annual PM Date
-        ttk.Label(form_frame, text="Next Annual PM Date:").grid(row=row, column=0, sticky='w', pady=5)
+        QLabel(form_frame, text="Next Annual PM Date:").grid(row=row, column=0, sticky='w', pady=5)
         self.next_annual_pm_var = tk.StringVar()
-        ttk.Entry(form_frame, textvariable=self.next_annual_pm_var, width=20).grid(row=row, column=1, sticky='w', padx=5, pady=5)
+        QLineEdit(form_frame, textvariable=self.next_annual_pm_var, width=20).grid(row=row, column=1, sticky='w', padx=5, pady=5)
         row += 1
         
         # Submit and refresh buttons
-        buttons_frame = ttk.Frame(form_frame)
+        buttons_frame = QWidget(form_frame)
         buttons_frame.grid(row=row, column=0, columnspan=2, pady=15)
         
-        ttk.Button(buttons_frame, text="Monthly Summary Report", 
+        QPushButton(buttons_frame, text="Monthly Summary Report", 
            command=self.show_monthly_summary).pack(side='left', padx=5)
         
-        ttk.Button(buttons_frame, text="Show Equipment PM History", 
+        QPushButton(buttons_frame, text="Show Equipment PM History", 
                 command=lambda: self.show_equipment_pm_history_dialog()).pack(side='left', padx=5)
         
-        ttk.Button(buttons_frame, text="Submit PM Completion", 
+        QPushButton(buttons_frame, text="Submit PM Completion", 
                 command=self.submit_pm_completion).pack(side='left', padx=5)
-        ttk.Button(buttons_frame, text="Refresh List", 
+        QPushButton(buttons_frame, text="Refresh List", 
                 command=self.load_recent_completions).pack(side='left', padx=5)
                
-        ttk.Button(buttons_frame, text="Check Equipment Schedule", 
+        QPushButton(buttons_frame, text="Check Equipment Schedule", 
                 command=self.create_pm_schedule_lookup_dialog).pack(side='left', padx=5)
         
-        ttk.Button(buttons_frame, text="Create CM from PM", 
+        QPushButton(buttons_frame, text="Create CM from PM", 
                 command=self.create_cm_from_pm_dialog).pack(side='left', padx=5)
         
         # Recent completions
-        recent_frame = ttk.LabelFrame(self.pm_completion_frame, text="Recent PM Completions", padding=10)
+        recent_frame = QLabelFrame(self.pm_completion_frame, text="Recent PM Completions", padding=10)
         recent_frame.pack(fill='both', expand=True, padx=10, pady=5)
         
-        self.recent_completions_tree = ttk.Treeview(recent_frame,
+        self.recent_completions_tree = QTreeWidget(recent_frame,
                                                   columns=('Date', 'BFM', 'PM Type', 'Technician', 'Hours'),
                                                   show='headings')
         
@@ -9485,31 +9495,31 @@ class AITCMMSSystem:
         
     def show_equipment_pm_history_dialog(self):
         """Dialog to look up PM history for any equipment"""
-        dialog = tk.Toplevel(self.root)
-        dialog.title("Equipment PM History Lookup")
+        dialog = QDialog(self.root)
+        dialog.setWindowTitle("Equipment PM History Lookup")
         dialog.geometry("400x200")
-        dialog.transient(self.root)
+        dialog.setParent(self.root)
         dialog.grab_set()
     
-        ttk.Label(dialog, text="Enter BFM Equipment Number:", font=('Arial', 12)).pack(pady=20)
+        QLabel(dialog, text="Enter BFM Equipment Number:", font=('Arial', 12)).pack(pady=20)
     
         bfm_var = tk.StringVar()
-        entry = ttk.Entry(dialog, textvariable=bfm_var, width=20, font=('Arial', 12))
+        entry = QLineEdit(dialog, textvariable=bfm_var, width=20, font=('Arial', 12))
         entry.pack(pady=10)
     
         def lookup_history():
             bfm_no = bfm_var.get().strip()
             if bfm_no:
-                dialog.destroy()
+                dialog.close()
                 self.show_recent_completions_for_equipment(bfm_no)
             else:
-                messagebox.showwarning("Warning", "Please enter a BFM Equipment Number")
+                QMessageBox.warning(self, "Warning", "Please enter a BFM Equipment Number")
     
-        button_frame = ttk.Frame(dialog)
+        button_frame = QWidget(dialog)
         button_frame.pack(pady=20)
     
-        ttk.Button(button_frame, text="Show History", command=lookup_history).pack(side='left', padx=10)
-        ttk.Button(button_frame, text="Cancel", command=dialog.destroy).pack(side='left', padx=10)
+        QPushButton(button_frame, text="Show History", command=lookup_history).pack(side='left', padx=10)
+        QPushButton(button_frame, text="Cancel", command=dialog.destroy).pack(side='left', padx=10)
     
         entry.focus_set()
         entry.bind('<Return>', lambda e: lookup_history())
@@ -9517,25 +9527,25 @@ class AITCMMSSystem:
         
     def create_pm_schedule_lookup_dialog(self):
         """Create dialog to lookup PM schedule for specific equipment"""
-        dialog = tk.Toplevel(self.root)
-        dialog.title("Equipment PM Schedule Lookup")
+        dialog = QDialog(self.root)
+        dialog.setWindowTitle("Equipment PM Schedule Lookup")
         dialog.geometry("800x600")
-        dialog.transient(self.root)
+        dialog.setParent(self.root)
         dialog.grab_set()
     
         # Search section
-        search_frame = ttk.LabelFrame(dialog, text="Equipment Search", padding=15)
+        search_frame = QLabelFrame(dialog, text="Equipment Search", padding=15)
         search_frame.pack(fill='x', padx=10, pady=5)
     
         # Equipment search
-        ttk.Label(search_frame, text="BFM Equipment Number:", font=('Arial', 10, 'bold')).grid(row=0, column=0, sticky='w', pady=5)
+        QLabel(search_frame, text="BFM Equipment Number:", font=('Arial', 10, 'bold')).grid(row=0, column=0, sticky='w', pady=5)
     
         bfm_var = tk.StringVar()
-        bfm_entry = ttk.Entry(search_frame, textvariable=bfm_var, width=20, font=('Arial', 11))
+        bfm_entry = QLineEdit(search_frame, textvariable=bfm_var, width=20, font=('Arial', 11))
         bfm_entry.grid(row=0, column=1, padx=10, pady=5)
     
         # Search button
-        search_btn = ttk.Button(search_frame, text="Look Up Schedule", 
+        search_btn = QPushButton(search_frame, text="Look Up Schedule", 
                             command=lambda: self.lookup_equipment_pm_schedule(bfm_var.get().strip(), results_frame))
         search_btn.grid(row=0, column=2, padx=10, pady=5)
     
@@ -9543,11 +9553,11 @@ class AITCMMSSystem:
         bfm_entry.bind('<KeyRelease>', lambda e: self.update_equipment_autocomplete(bfm_var, bfm_entry))
     
         # Results display frame
-        results_frame = ttk.LabelFrame(dialog, text="PM Schedule Results", padding=10)
+        results_frame = QLabelFrame(dialog, text="PM Schedule Results", padding=10)
         results_frame.pack(fill='both', expand=True, padx=10, pady=5)
     
         # Instructions
-        instructions = ttk.Label(results_frame, 
+        instructions = QLabel(results_frame, 
                             text="Enter a BFM Equipment Number above and click 'Look Up Schedule'\nto see current PM status and next scheduled dates.",
                             font=('Arial', 10), foreground='gray')
         instructions.pack(pady=50)
@@ -9584,7 +9594,7 @@ class AITCMMSSystem:
     def lookup_equipment_pm_schedule(self, bfm_no, parent_frame):
         """Lookup and display PM schedule for specific equipment"""
         if not bfm_no:
-            messagebox.showwarning("Warning", "Please enter a BFM Equipment Number")
+            QMessageBox.warning(self, "Warning", "Please enter a BFM Equipment Number")
             return
     
         try:
@@ -9592,7 +9602,7 @@ class AITCMMSSystem:
         
             # Clear previous results
             for widget in parent_frame.winfo_children():
-                widget.destroy()
+                widget.close()
         
             # Get equipment information
             cursor.execute('''
@@ -9609,7 +9619,7 @@ class AITCMMSSystem:
         
             if not equipment_data:
                 # Equipment not found
-                error_label = ttk.Label(parent_frame, 
+                error_label = QLabel(parent_frame, 
                                     text=f"Equipment '{bfm_no}' not found in database",
                                     font=('Arial', 12, 'bold'), foreground='red')
                 error_label.pack(pady=20)
@@ -9624,8 +9634,8 @@ class AITCMMSSystem:
         
             # Create scrollable frame for results
             canvas = tk.Canvas(parent_frame)
-            scrollbar = ttk.Scrollbar(parent_frame, orient="vertical", command=canvas.yview)
-            scrollable_frame = ttk.Frame(canvas)
+            scrollbar = QScrollArea(parent_frame, orient="vertical", command=canvas.yview)
+            scrollable_frame = QWidget(canvas)
         
             scrollable_frame.bind(
                 "<Configure>",
@@ -9636,30 +9646,30 @@ class AITCMMSSystem:
             canvas.configure(yscrollcommand=scrollbar.set)
         
             # Equipment header information
-            header_frame = ttk.LabelFrame(scrollable_frame, text="Equipment Information", padding=15)
+            header_frame = QLabelFrame(scrollable_frame, text="Equipment Information", padding=15)
             header_frame.pack(fill='x', padx=5, pady=5)
         
             # Equipment details in a grid
-            ttk.Label(header_frame, text="BFM Equipment No:", font=('Arial', 10, 'bold')).grid(row=0, column=0, sticky='w', padx=5, pady=2)
-            ttk.Label(header_frame, text=bfm_no, font=('Arial', 10)).grid(row=0, column=1, sticky='w', padx=15, pady=2)
+            QLabel(header_frame, text="BFM Equipment No:", font=('Arial', 10, 'bold')).grid(row=0, column=0, sticky='w', padx=5, pady=2)
+            QLabel(header_frame, text=bfm_no, font=('Arial', 10)).grid(row=0, column=1, sticky='w', padx=15, pady=2)
         
-            ttk.Label(header_frame, text="SAP Material No:", font=('Arial', 10, 'bold')).grid(row=0, column=2, sticky='w', padx=5, pady=2)
-            ttk.Label(header_frame, text=sap_no or 'N/A', font=('Arial', 10)).grid(row=0, column=3, sticky='w', padx=15, pady=2)
+            QLabel(header_frame, text="SAP Material No:", font=('Arial', 10, 'bold')).grid(row=0, column=2, sticky='w', padx=5, pady=2)
+            QLabel(header_frame, text=sap_no or 'N/A', font=('Arial', 10)).grid(row=0, column=3, sticky='w', padx=15, pady=2)
         
-            ttk.Label(header_frame, text="Description:", font=('Arial', 10, 'bold')).grid(row=1, column=0, sticky='w', padx=5, pady=2)
+            QLabel(header_frame, text="Description:", font=('Arial', 10, 'bold')).grid(row=1, column=0, sticky='w', padx=5, pady=2)
             desc_text = (description[:50] + '...') if description and len(description) > 50 else (description or 'N/A')
-            ttk.Label(header_frame, text=desc_text, font=('Arial', 10)).grid(row=1, column=1, columnspan=3, sticky='w', padx=15, pady=2)
+            QLabel(header_frame, text=desc_text, font=('Arial', 10)).grid(row=1, column=1, columnspan=3, sticky='w', padx=15, pady=2)
         
-            ttk.Label(header_frame, text="Location:", font=('Arial', 10, 'bold')).grid(row=2, column=0, sticky='w', padx=5, pady=2)
-            ttk.Label(header_frame, text=location or 'N/A', font=('Arial', 10)).grid(row=2, column=1, sticky='w', padx=15, pady=2)
+            QLabel(header_frame, text="Location:", font=('Arial', 10, 'bold')).grid(row=2, column=0, sticky='w', padx=5, pady=2)
+            QLabel(header_frame, text=location or 'N/A', font=('Arial', 10)).grid(row=2, column=1, sticky='w', padx=15, pady=2)
         
-            ttk.Label(header_frame, text="Status:", font=('Arial', 10, 'bold')).grid(row=2, column=2, sticky='w', padx=5, pady=2)
+            QLabel(header_frame, text="Status:", font=('Arial', 10, 'bold')).grid(row=2, column=2, sticky='w', padx=5, pady=2)
             status_color = 'green' if status == 'Active' else 'red' if status == 'Missing' else 'orange'
-            status_label = ttk.Label(header_frame, text=status or 'Active', font=('Arial', 10, 'bold'), foreground=status_color)
+            status_label = QLabel(header_frame, text=status or 'Active', font=('Arial', 10, 'bold'), foreground=status_color)
             status_label.grid(row=2, column=3, sticky='w', padx=15, pady=2)
         
             # PM Schedule Status
-            schedule_frame = ttk.LabelFrame(scrollable_frame, text="PM Schedule Status", padding=15)
+            schedule_frame = QLabelFrame(scrollable_frame, text="PM Schedule Status", padding=15)
             schedule_frame.pack(fill='x', padx=5, pady=5)
         
             # Create PM schedule table
@@ -9701,12 +9711,12 @@ class AITCMMSSystem:
         
             # Create table display
             for i, row_data in enumerate(pm_data):
-                row_frame = ttk.Frame(schedule_frame)
+                row_frame = QWidget(schedule_frame)
                 row_frame.pack(fill='x', pady=1)
             
                 for j, cell_data in enumerate(row_data):
                     if i == 0:  # Header row
-                        label = ttk.Label(row_frame, text=cell_data, font=('Arial', 10, 'bold'), 
+                        label = QLabel(row_frame, text=cell_data, font=('Arial', 10, 'bold'), 
                                         relief='raised', padding=5, width=15)
                     else:  # Data rows
                         # Color code the status column
@@ -9719,16 +9729,16 @@ class AITCMMSSystem:
                                 color = 'green'
                             else:
                                 color = 'gray'
-                            label = ttk.Label(row_frame, text=cell_data, font=('Arial', 10, 'bold'), 
+                            label = QLabel(row_frame, text=cell_data, font=('Arial', 10, 'bold'), 
                                             foreground=color, padding=3, width=15)
                         else:
-                            label = ttk.Label(row_frame, text=cell_data, font=('Arial', 10), 
+                            label = QLabel(row_frame, text=cell_data, font=('Arial', 10), 
                                             padding=3, width=15)
                     
                     label.pack(side='left', padx=2)
         
             # Recent PM History
-            history_frame = ttk.LabelFrame(scrollable_frame, text="Recent PM History (Last 10)", padding=15)
+            history_frame = QLabelFrame(scrollable_frame, text="Recent PM History (Last 10)", padding=15)
             history_frame.pack(fill='x', padx=5, pady=5)
         
             cursor.execute('''
@@ -9753,27 +9763,27 @@ class AITCMMSSystem:
                     history_data.append([comp_date, pm_type, technician, hours_str, notes_str])
             
                 for i, row_data in enumerate(history_data):
-                    row_frame = ttk.Frame(history_frame)
+                    row_frame = QWidget(history_frame)
                     row_frame.pack(fill='x', pady=1)
                 
                     for j, cell_data in enumerate(row_data):
                         if i == 0:  # Header row
                             width = [10, 10, 15, 8, 25][j]  # Different widths for each column
-                            label = ttk.Label(row_frame, text=cell_data, font=('Arial', 10, 'bold'), 
+                            label = QLabel(row_frame, text=cell_data, font=('Arial', 10, 'bold'), 
                                         relief='raised', padding=5, width=width)
                         else:
                             width = [10, 10, 15, 8, 25][j]
-                            label = ttk.Label(row_frame, text=cell_data, font=('Arial', 9), 
+                            label = QLabel(row_frame, text=cell_data, font=('Arial', 9), 
                                             padding=3, width=width)
                     
                         label.pack(side='left', padx=2)
             else:
-                no_history_label = ttk.Label(history_frame, text="No PM completions found for this equipment", 
+                no_history_label = QLabel(history_frame, text="No PM completions found for this equipment", 
                                         font=('Arial', 10), foreground='gray')
                 no_history_label.pack(pady=10)
         
             # Upcoming schedule (if any)
-            upcoming_frame = ttk.LabelFrame(scrollable_frame, text="Upcoming Weekly Schedules", padding=15)
+            upcoming_frame = QLabelFrame(scrollable_frame, text="Upcoming Weekly Schedules", padding=15)
             upcoming_frame.pack(fill='x', padx=5, pady=5)
         
             cursor.execute('''
@@ -9793,20 +9803,20 @@ class AITCMMSSystem:
                     upcoming_data.append([pm_type, technician, sched_date, week_start, sched_status])
             
                 for i, row_data in enumerate(upcoming_data):
-                    row_frame = ttk.Frame(upcoming_frame)
+                    row_frame = QWidget(upcoming_frame)
                     row_frame.pack(fill='x', pady=1)
                 
                     for j, cell_data in enumerate(row_data):
                         if i == 0:  # Header row
-                            label = ttk.Label(row_frame, text=cell_data, font=('Arial', 10, 'bold'), 
+                            label = QLabel(row_frame, text=cell_data, font=('Arial', 10, 'bold'), 
                                             relief='raised', padding=5, width=12)
                         else:
-                            label = ttk.Label(row_frame, text=cell_data, font=('Arial', 10), 
+                            label = QLabel(row_frame, text=cell_data, font=('Arial', 10), 
                                             padding=3, width=12)
                     
                         label.pack(side='left', padx=2)
             else:
-                no_upcoming_label = ttk.Label(upcoming_frame, text="No upcoming scheduled PMs found", 
+                no_upcoming_label = QLabel(upcoming_frame, text="No upcoming scheduled PMs found", 
                                             font=('Arial', 10), foreground='gray')
                 no_upcoming_label.pack(pady=10)
         
@@ -9819,7 +9829,7 @@ class AITCMMSSystem:
             canvas.configure(scrollregion=canvas.bbox("all"))
         
         except Exception as e:
-            error_label = ttk.Label(parent_frame, 
+            error_label = QLabel(parent_frame, 
                                 text=f"Error looking up equipment: {str(e)}", 
                                 font=('Arial', 10), foreground='red')
             error_label.pack(pady=20)
@@ -9868,7 +9878,7 @@ class AITCMMSSystem:
             month_name = calendar.month_name[int(month_num)]
         
             # Get file path
-            filename = filedialog.asksaveasfilename(
+            filename = QFileDialog.getSaveFileName(self, 
             title="Export Monthly PM Completions",
             defaultextension=".csv",
             initialname=f"PM_Completions_{month_name}_{year}.csv",
@@ -9944,10 +9954,10 @@ class AITCMMSSystem:
                 df = pd.DataFrame(data, columns=columns)
                 df.to_csv(filename, index=False)
             
-                messagebox.showinfo("Success", f"Monthly data exported to: {filename}")
+                QMessageBox.information(self, "Success", f"Monthly data exported to: {filename}")
             
         except Exception as e:
-            messagebox.showerror("Export Error", f"Failed to export monthly data: {str(e)}")   
+            QMessageBox.critical(self, "Export Error", f"Failed to export monthly data: {str(e)}")   
     
     def on_completion_double_click(self, event):
         """Handle double-click on recent PM completions to generate PDF"""
@@ -10016,11 +10026,11 @@ class AITCMMSSystem:
             completion_data = cursor.fetchone()
         
             if not completion_data:
-                messagebox.showerror("Error", "Could not find completion details")
+                QMessageBox.critical(self, "Error", "Could not find completion details")
                 return
             
             # Add just the title parameter
-            filename = filedialog.asksaveasfilename(
+            filename = QFileDialog.getSaveFileName(self, 
                 title="Save PM Completion Document"
             )
         
@@ -10028,7 +10038,7 @@ class AITCMMSSystem:
                 self.create_pm_completion_pdf(completion_data, filename)
             
         except Exception as e:
-            messagebox.showerror("Error", f"Failed to generate PDF: {str(e)}")
+            QMessageBox.critical(self, "Error", f"Failed to generate PDF: {str(e)}")
 
     def create_pm_completion_pdf(self, completion_data, filename):
         """Create the actual PDF document"""
@@ -10146,61 +10156,61 @@ class AITCMMSSystem:
             # Build the PDF
             doc.build(story)
         
-            messagebox.showinfo("Success", f"PM Completion document saved to:\n{filename}")
+            QMessageBox.information(self, "Success", f"PM Completion document saved to:\n{filename}")
         
             # Ask if user wants to open the PDF
-            if messagebox.askyesno("Open Document", "Would you like to open the PDF document now?"):
+            if QMessageBox.question(self, "Open Document", "Would you like to open the PDF document now?"):
                 os.startfile(filename)  # Windows
             
         except Exception as e:
-            messagebox.showerror("PDF Creation Error", f"Failed to create PDF: {str(e)}")
+            QMessageBox.critical(self, "PDF Creation Error", f"Failed to create PDF: {str(e)}")
             print(f"Full error: {e}")
     
     def create_cannot_find_tab(self):
         """Cannot Find Assets tab with search functionality"""
-        self.cannot_find_frame = ttk.Frame(self.notebook)
+        self.cannot_find_frame = QWidget(self.notebook)
         self.notebook.add(self.cannot_find_frame, text="Cannot Find Assets")
 
         # Controls
-        controls_frame = ttk.LabelFrame(self.cannot_find_frame, text="Cannot Find Controls", padding=10)
+        controls_frame = QLabelFrame(self.cannot_find_frame, text="Cannot Find Controls", padding=10)
         controls_frame.pack(fill='x', padx=10, pady=5)
 
         # Add Asset button
-        ttk.Button(controls_frame, text="Add Asset", 
+        QPushButton(controls_frame, text="Add Asset", 
                 command=self.add_cannot_find_asset_dialog,
                 style='Accent.TButton').pack(side='left', padx=5)
     
-        ttk.Button(controls_frame, text="Refresh List", 
+        QPushButton(controls_frame, text="Refresh List", 
                 command=self.load_cannot_find_assets).pack(side='left', padx=5)
-        ttk.Button(controls_frame, text="Export to PDF", 
+        QPushButton(controls_frame, text="Export to PDF", 
                 command=self.export_cannot_find_pdf).pack(side='left', padx=5)
-        ttk.Button(controls_frame, text="Mark as Found", 
+        QPushButton(controls_frame, text="Mark as Found", 
                 command=self.mark_asset_found).pack(side='left', padx=5)
-        ttk.Button(controls_frame, text="Delete Asset", 
+        QPushButton(controls_frame, text="Delete Asset", 
             command=self.delete_cannot_find_asset).pack(side='left', padx=5)        
-        ttk.Button(controls_frame, text="Edit Asset", 
+        QPushButton(controls_frame, text="Edit Asset", 
             command=self.edit_cannot_find_asset).pack(side='left', padx=5)
     
         # Search frame - NEW!
-        search_frame = ttk.Frame(controls_frame)
+        search_frame = QWidget(controls_frame)
         search_frame.pack(side='right', padx=5)
         
-        ttk.Label(search_frame, text="Search:").pack(side='left', padx=(10, 5))
+        QLabel(search_frame, text="Search:").pack(side='left', padx=(10, 5))
         self.cannot_find_search_var = tk.StringVar()
         self.cannot_find_search_var.trace('w', lambda *args: self.filter_cannot_find_assets())
         
-        search_entry = ttk.Entry(search_frame, textvariable=self.cannot_find_search_var, width=25)
+        search_entry = QLineEdit(search_frame, textvariable=self.cannot_find_search_var, width=25)
         search_entry.pack(side='left', padx=5)
         
         # Clear search button
-        ttk.Button(search_frame, text="X", width=3,
+        QPushButton(search_frame, text="X", width=3,
                 command=lambda: self.cannot_find_search_var.set('')).pack(side='left', padx=2)
 
         # Cannot Find list
-        list_frame = ttk.LabelFrame(self.cannot_find_frame, text="Missing Assets", padding=10)
+        list_frame = QLabelFrame(self.cannot_find_frame, text="Missing Assets", padding=10)
         list_frame.pack(fill='both', expand=True, padx=10, pady=5)
 
-        self.cannot_find_tree = ttk.Treeview(list_frame,
+        self.cannot_find_tree = QTreeWidget(list_frame,
                                         columns=('BFM', 'Description', 'Location', 'Technician', 'Report Date', 'Status'),
                                         show='headings')
 
@@ -10218,8 +10228,8 @@ class AITCMMSSystem:
             self.cannot_find_tree.column(col, width=width)
 
         # Scrollbars
-        cf_v_scrollbar = ttk.Scrollbar(list_frame, orient='vertical', command=self.cannot_find_tree.yview)
-        cf_h_scrollbar = ttk.Scrollbar(list_frame, orient='horizontal', command=self.cannot_find_tree.xview)
+        cf_v_scrollbar = QScrollArea(list_frame, orient='vertical', command=self.cannot_find_tree.yview)
+        cf_h_scrollbar = QScrollArea(list_frame, orient='horizontal', command=self.cannot_find_tree.xview)
         self.cannot_find_tree.configure(yscrollcommand=cf_v_scrollbar.set, xscrollcommand=cf_h_scrollbar.set)
 
         # Pack treeview and scrollbars
@@ -10241,7 +10251,7 @@ class AITCMMSSystem:
         selected_item = self.cannot_find_tree.selection()
 
         if not selected_item:
-            messagebox.showwarning("No Selection", "Please select an asset to delete.")
+            QMessageBox.warning(self, "No Selection", "Please select an asset to delete.")
             return
 
         # Get the selected item data
@@ -10251,7 +10261,7 @@ class AITCMMSSystem:
         description = asset_data[1] if len(asset_data) > 1 else ''
 
         # Confirm permanent deletion
-        result = messagebox.askyesno(
+        result = QMessageBox.question(self, 
             "Confirm Permanent Deletion", 
             f"Permanently delete asset {bfm_number} from the Cannot Find database?\n\n"
             f"Description: {description}\n\n"
@@ -10284,11 +10294,11 @@ class AITCMMSSystem:
                 if hasattr(self, 'update_equipment_statistics'):
                     self.update_equipment_statistics()
             
-                messagebox.showinfo("Success", f"Asset {bfm_number} has been permanently deleted from the Cannot Find list.")
+                QMessageBox.information(self, "Success", f"Asset {bfm_number} has been permanently deleted from the Cannot Find list.")
             
             except Exception as e:
                 self.conn.rollback()  # Rollback changes if there's an error
-                messagebox.showerror("Error", f"Failed to delete asset from database: {str(e)}")
+                QMessageBox.critical(self, "Error", f"Failed to delete asset from database: {str(e)}")
                 print(f"Delete error details: {e}")
 
 
@@ -10310,7 +10320,7 @@ class AITCMMSSystem:
         selected_item = self.cannot_find_tree.selection()
     
         if not selected_item:
-            messagebox.showwarning("No Selection", "Please select an asset to edit.")
+            QMessageBox.warning(self, "No Selection", "Please select an asset to edit.")
             return
     
         # Get the selected item data
@@ -10324,13 +10334,13 @@ class AITCMMSSystem:
     def open_edit_window(self, tree_item, asset_data):
         """Open edit window for selected asset"""
         # Create edit window
-        edit_window = tk.Toplevel(self.root)
-        edit_window.title("Edit Asset")
+        edit_window = QDialog(self.root)
+        edit_window.setWindowTitle("Edit Asset")
         edit_window.geometry("500x400")
         edit_window.resizable(True, True)
     
         # Make window modal
-        edit_window.transient(self.root)
+        edit_window.setParent(self.root)
         edit_window.grab_set()
     
         # Center the window
@@ -10340,16 +10350,16 @@ class AITCMMSSystem:
         edit_window.geometry(f"500x400+{x}+{y}")
     
         # Create main frame with padding
-        main_frame = ttk.Frame(edit_window, padding=20)
+        main_frame = QWidget(edit_window, padding=20)
         main_frame.pack(fill='both', expand=True)
     
         # Title
-        title_label = ttk.Label(main_frame, text="Edit Asset Information", 
+        title_label = QLabel(main_frame, text="Edit Asset Information", 
                             font=('TkDefaultFont', 12, 'bold'))
         title_label.pack(pady=(0, 20))
     
         # Create form frame
-        form_frame = ttk.Frame(main_frame)
+        form_frame = QWidget(main_frame)
         form_frame.pack(fill='both', expand=True)
     
         # Field labels and entry variables
@@ -10368,20 +10378,20 @@ class AITCMMSSystem:
         # Create form fields
         for i, (label_text, value) in enumerate(fields):
             # Label
-            label = ttk.Label(form_frame, text=label_text + ":")
+            label = QLabel(form_frame, text=label_text + ":")
             label.grid(row=i, column=0, sticky='w', padx=(0, 10), pady=5)
         
             # Entry widget
             if label_text == 'Status':
                 # Use combobox for status
-                entry = ttk.Combobox(form_frame, values=['Missing', 'Found', 'Damaged', 'Disposed'])
+                entry = QComboBox(form_frame, values=['Missing', 'Found', 'Damaged', 'Disposed'])
                 entry.set(value)
             elif label_text == 'Description':
                 # Use text widget for description (multiline)
-                entry = tk.Text(form_frame, height=3, width=40)
+                entry = QTextEdit(form_frame, height=3, width=40)
                 entry.insert('1.0', value)
             else:
-                entry = ttk.Entry(form_frame, width=40)
+                entry = QLineEdit(form_frame, width=40)
                 entry.insert(0, value)
         
             entry.grid(row=i, column=1, sticky='ew', pady=5)
@@ -10391,7 +10401,7 @@ class AITCMMSSystem:
         form_frame.grid_columnconfigure(1, weight=1)
     
         # Button frame
-        button_frame = ttk.Frame(main_frame)
+        button_frame = QWidget(main_frame)
         button_frame.pack(fill='x', pady=(20, 0))
     
         # Buttons
@@ -10402,7 +10412,7 @@ class AITCMMSSystem:
                 updated_data = []
                 for field_name, _ in fields:
                     entry_widget = entries[field_name]
-                    if isinstance(entry_widget, tk.Text):
+                    if isinstance(entry_widget, QTextEdit):
                         value = entry_widget.get('1.0', 'end-1c')  # Get text content
                     else:
                         value = entry_widget.get()
@@ -10410,42 +10420,42 @@ class AITCMMSSystem:
             
                 # Validate required fields
                 if not updated_data[0].strip():  # BFM number is required
-                    messagebox.showerror("Validation Error", "BFM Equipment No. is required.")
+                    QMessageBox.critical(self, "Validation Error", "BFM Equipment No. is required.")
                     return
-            
-                # TODO: Update database here
-                # Example: self.update_asset_in_database(updated_data)
-            
+
+                # Database update logic
+                # self.update_asset_in_database(updated_data)
+
                 # Update treeview
                 self.cannot_find_tree.item(tree_item, values=updated_data)
             
                 # Show success message
-                messagebox.showinfo("Success", "Asset information updated successfully.")
+                QMessageBox.information(self, "Success", "Asset information updated successfully.")
                 
                 # Close edit window
-                edit_window.destroy()
+                edit_window.close()
             
             except Exception as e:
-                messagebox.showerror("Error", f"Failed to update asset: {str(e)}")
+                QMessageBox.critical(self, "Error", f"Failed to update asset: {str(e)}")
     
         def cancel_edit():
             """Cancel editing and close window"""
-            edit_window.destroy()
+            edit_window.close()
     
         # Save and Cancel buttons
-        ttk.Button(button_frame, text="Save Changes", 
+        QPushButton(button_frame, text="Save Changes", 
                 command=save_changes).pack(side='right', padx=(5, 0))
-        ttk.Button(button_frame, text="Cancel", 
+        QPushButton(button_frame, text="Cancel", 
                 command=cancel_edit).pack(side='right')
     
         # Focus on first entry
         if fields:
             first_entry = entries[fields[0][0]]
-            if not isinstance(first_entry, tk.Text):
-                first_entry.focus()
+            if not isinstance(first_entry, QTextEdit):
+                first_entry.setFocus()
                 first_entry.select_range(0, tk.END)
             else:
-                first_entry.focus()
+                first_entry.setFocus()
 
     def update_asset_in_database(self, asset_data):
         """Update asset record in database"""
@@ -10471,25 +10481,25 @@ class AITCMMSSystem:
         
     def create_run_to_failure_tab(self):
         """Run to Failure Assets tab"""
-        self.run_to_failure_frame = ttk.Frame(self.notebook)
+        self.run_to_failure_frame = QWidget(self.notebook)
         self.notebook.add(self.run_to_failure_frame, text="Run to Failure Assets")
     
         # Controls
-        controls_frame = ttk.LabelFrame(self.run_to_failure_frame, text="Run to Failure Controls", padding=10)
+        controls_frame = QLabelFrame(self.run_to_failure_frame, text="Run to Failure Controls", padding=10)
         controls_frame.pack(fill='x', padx=10, pady=5)
     
-        ttk.Button(controls_frame, text="Refresh List", 
+        QPushButton(controls_frame, text="Refresh List", 
                 command=self.load_run_to_failure_assets).pack(side='left', padx=5)
-        ttk.Button(controls_frame, text="Export to PDF", 
+        QPushButton(controls_frame, text="Export to PDF", 
                 command=self.export_run_to_failure_pdf).pack(side='left', padx=5)
-        ttk.Button(controls_frame, text="Reactivate Asset", 
+        QPushButton(controls_frame, text="Reactivate Asset", 
                 command=self.reactivate_asset).pack(side='left', padx=5)
     
         # Run to Failure list
-        list_frame = ttk.LabelFrame(self.run_to_failure_frame, text="Run to Failure Assets", padding=10)
+        list_frame = QLabelFrame(self.run_to_failure_frame, text="Run to Failure Assets", padding=10)
         list_frame.pack(fill='both', expand=True, padx=10, pady=5)
     
-        self.run_to_failure_tree = ttk.Treeview(list_frame,
+        self.run_to_failure_tree = QTreeWidget(list_frame,
                                             columns=('BFM', 'Description', 'Location', 'Technician', 'Completion Date', 'Hours'),
                                             show='headings',
                                             selectmode='extended')
@@ -10508,8 +10518,8 @@ class AITCMMSSystem:
             self.run_to_failure_tree.column(col, width=width)
     
         # Scrollbars
-        rtf_v_scrollbar = ttk.Scrollbar(list_frame, orient='vertical', command=self.run_to_failure_tree.yview)
-        rtf_h_scrollbar = ttk.Scrollbar(list_frame, orient='horizontal', command=self.run_to_failure_tree.xview)
+        rtf_v_scrollbar = QScrollArea(list_frame, orient='vertical', command=self.run_to_failure_tree.yview)
+        rtf_h_scrollbar = QScrollArea(list_frame, orient='horizontal', command=self.run_to_failure_tree.xview)
         self.run_to_failure_tree.configure(yscrollcommand=rtf_v_scrollbar.set, xscrollcommand=rtf_h_scrollbar.set)
     
         # Pack treeview and scrollbars
@@ -10527,50 +10537,50 @@ class AITCMMSSystem:
     
     def create_cm_management_tab(self):
         """Enhanced Corrective Maintenance management tab with SharePoint integration and filter"""
-        self.cm_frame = ttk.Frame(self.notebook)
+        self.cm_frame = QWidget(self.notebook)
         self.notebook.add(self.cm_frame, text="Corrective Maintenance")
 
         # CM controls - Enhanced with SharePoint button
-        controls_frame = ttk.LabelFrame(self.cm_frame, text="CM Controls", padding=10)
+        controls_frame = QLabelFrame(self.cm_frame, text="CM Controls", padding=10)
         controls_frame.pack(fill='x', padx=10, pady=5)
 
         # First row of controls
-        controls_row1 = ttk.Frame(controls_frame)
+        controls_row1 = QWidget(controls_frame)
         controls_row1.pack(fill='x', pady=(0, 5))
     
-        ttk.Button(controls_row1, text="Create New CM", 
+        QPushButton(controls_row1, text="Create New CM", 
                 command=self.create_cm_dialog).pack(side='left', padx=5)
-        ttk.Button(controls_row1, text="Edit CM", 
+        QPushButton(controls_row1, text="Edit CM", 
                 command=self.edit_cm_dialog).pack(side='left', padx=5)
-        ttk.Button(controls_row1, text="Complete CM", 
+        QPushButton(controls_row1, text="Complete CM", 
                 command=self.complete_cm_dialog).pack(side='left', padx=5)
-        ttk.Button(controls_row1, text="Refresh CM List", 
+        QPushButton(controls_row1, text="Refresh CM List", 
                 command=self.load_corrective_maintenance_with_filter).pack(side='left', padx=5)
 
         # Filter controls
-        filter_frame = ttk.Frame(controls_frame)
+        filter_frame = QWidget(controls_frame)
         filter_frame.pack(fill='x')
         
-        ttk.Label(filter_frame, text="Filter by Status:").pack(side='left', padx=(0, 5))
+        QLabel(filter_frame, text="Filter by Status:").pack(side='left', padx=(0, 5))
     
         # Create filter dropdown
         self.cm_filter_var = tk.StringVar(value="All")
-        self.cm_filter_dropdown = ttk.Combobox(filter_frame, textvariable=self.cm_filter_var, 
+        self.cm_filter_dropdown = QComboBox(filter_frame, textvariable=self.cm_filter_var, 
                                             values=["All", "Open", "Closed"],
                                             state="readonly", width=15)
         self.cm_filter_dropdown.pack(side='left', padx=5)
         self.cm_filter_dropdown.bind('<<ComboboxSelected>>', self.filter_cm_list)
     
         # Clear filter button
-        ttk.Button(filter_frame, text="Clear Filter", 
+        QPushButton(filter_frame, text="Clear Filter", 
                 command=self.clear_cm_filter).pack(side='left', padx=5)
 
         # CM list with enhanced columns for SharePoint data
-        cm_list_frame = ttk.LabelFrame(self.cm_frame, text="Corrective Maintenance List", padding=10)
+        cm_list_frame = QLabelFrame(self.cm_frame, text="Corrective Maintenance List", padding=10)
         cm_list_frame.pack(fill='both', expand=True, padx=10, pady=5)
 
         # Enhanced treeview with additional columns
-        self.cm_tree = ttk.Treeview(cm_list_frame,
+        self.cm_tree = QTreeWidget(cm_list_frame,
                                 columns=('CM Number', 'BFM', 'Description', 'Priority', 'Assigned', 'Status', 'Created', 'Source'),
                                 show='headings')
 
@@ -10590,8 +10600,8 @@ class AITCMMSSystem:
             self.cm_tree.column(col, width=width)
 
         # Scrollbars
-        cm_v_scrollbar = ttk.Scrollbar(cm_list_frame, orient='vertical', command=self.cm_tree.yview)
-        cm_h_scrollbar = ttk.Scrollbar(cm_list_frame, orient='horizontal', command=self.cm_tree.xview)
+        cm_v_scrollbar = QScrollArea(cm_list_frame, orient='vertical', command=self.cm_tree.yview)
+        cm_h_scrollbar = QScrollArea(cm_list_frame, orient='horizontal', command=self.cm_tree.xview)
         self.cm_tree.configure(yscrollcommand=cm_v_scrollbar.set, xscrollcommand=cm_h_scrollbar.set)
 
         # Pack treeview and scrollbars
@@ -10670,7 +10680,7 @@ class AITCMMSSystem:
                 xl_file = pd.ExcelFile(file_path)
                 available_sheets = xl_file.sheet_names
             
-                messagebox.showerror("Sheet Not Found", 
+                QMessageBox.critical(self, "Sheet Not Found", 
                                 f"Could not find 'CMDATA' sheet.\n\n"
                                 f"Available sheets: {', '.join(available_sheets)}\n\n"
                                 f"Please verify the correct sheet name.")
@@ -10680,24 +10690,24 @@ class AITCMMSSystem:
             self.show_sharepoint_data_preview(df)
         
         except Exception as e:
-            messagebox.showerror("Error", f"Failed to read Excel file: {str(e)}")
+            QMessageBox.critical(self, "Error", f"Failed to read Excel file: {str(e)}")
             self.sharepoint_status_label.config(text="Import failed")
 
     def show_sharepoint_data_preview(self, df):
         """Show preview of SharePoint data and allow column mapping"""
-        dialog = tk.Toplevel(self.root)
-        dialog.title("SharePoint Data Preview & Mapping")
+        dialog = QDialog(self.root)
+        dialog.setWindowTitle("SharePoint Data Preview & Mapping")
         dialog.geometry("900x700")
-        dialog.transient(self.root)
+        dialog.setParent(self.root)
         dialog.grab_set()
     
         # Data preview
-        preview_frame = ttk.LabelFrame(dialog, text="Data Preview (First 10 rows)", padding=10)
+        preview_frame = QLabelFrame(dialog, text="Data Preview (First 10 rows)", padding=10)
         preview_frame.pack(fill='both', expand=True, padx=10, pady=5)
     
         # Create treeview for data preview
         preview_columns = list(df.columns)
-        preview_tree = ttk.Treeview(preview_frame, columns=preview_columns, show='headings')
+        preview_tree = QTreeWidget(preview_frame, columns=preview_columns, show='headings')
     
         # Configure columns
         for col in preview_columns:
@@ -10710,8 +10720,8 @@ class AITCMMSSystem:
             preview_tree.insert('', 'end', values=values)
     
         # Scrollbars
-        preview_v_scrollbar = ttk.Scrollbar(preview_frame, orient='vertical', command=preview_tree.yview)
-        preview_h_scrollbar = ttk.Scrollbar(preview_frame, orient='horizontal', command=preview_tree.xview)
+        preview_v_scrollbar = QScrollArea(preview_frame, orient='vertical', command=preview_tree.yview)
+        preview_h_scrollbar = QScrollArea(preview_frame, orient='horizontal', command=preview_tree.xview)
         preview_tree.configure(yscrollcommand=preview_v_scrollbar.set, xscrollcommand=preview_h_scrollbar.set)
     
         preview_tree.grid(row=0, column=0, sticky='nsew')
@@ -10722,7 +10732,7 @@ class AITCMMSSystem:
         preview_frame.grid_columnconfigure(0, weight=1)
     
         # Column mapping
-        mapping_frame = ttk.LabelFrame(dialog, text="Map Columns to CM Fields", padding=10)
+        mapping_frame = QLabelFrame(dialog, text="Map Columns to CM Fields", padding=10)
         mapping_frame.pack(fill='x', padx=10, pady=5)
     
         # Column mappings
@@ -10745,10 +10755,10 @@ class AITCMMSSystem:
     
         row = 0
         for field_name, field_key in cm_fields:
-            ttk.Label(mapping_frame, text=field_name + ":").grid(row=row, column=0, sticky='w', pady=2)
+            QLabel(mapping_frame, text=field_name + ":").grid(row=row, column=0, sticky='w', pady=2)
         
             mapping_var = tk.StringVar()
-            combo = ttk.Combobox(mapping_frame, textvariable=mapping_var, values=column_options, width=30)
+            combo = QComboBox(mapping_frame, textvariable=mapping_var, values=column_options, width=30)
             combo.grid(row=row, column=1, padx=10, pady=2)
         
             # Try to auto-match common column names
@@ -10850,7 +10860,7 @@ class AITCMMSSystem:
                         continue
             
                 self.conn.commit()
-                dialog.destroy()
+                dialog.close()
             
                 # Show results
                 result_msg = f"SharePoint import completed!\n\n"
@@ -10859,7 +10869,7 @@ class AITCMMSSystem:
                     result_msg += f"Skipped (errors): {error_count} records\n"
                 result_msg += f"\nTotal processed: {imported_count + error_count} records"
             
-                messagebox.showinfo("Import Results", result_msg)
+                QMessageBox.information(self, "Import Results", result_msg)
             
                 # Refresh CM list
                 self.load_corrective_maintenance()
@@ -10867,15 +10877,15 @@ class AITCMMSSystem:
                 self.update_status(f"Imported {imported_count} CM records from SharePoint")
             
             except Exception as e:
-                messagebox.showerror("Error", f"Failed to import data: {str(e)}")
+                QMessageBox.critical(self, "Error", f"Failed to import data: {str(e)}")
                 self.sharepoint_status_label.config(text="Import failed")
     
         # Buttons
-        button_frame = ttk.Frame(dialog)
+        button_frame = QWidget(dialog)
         button_frame.pack(side='bottom', fill='x', padx=10, pady=10)
     
-        ttk.Button(button_frame, text="Import Data", command=import_sharepoint_data).pack(side='left', padx=5)
-        ttk.Button(button_frame, text="Cancel", command=dialog.destroy).pack(side='right', padx=5)
+        QPushButton(button_frame, text="Import Data", command=import_sharepoint_data).pack(side='left', padx=5)
+        QPushButton(button_frame, text="Cancel", command=dialog.destroy).pack(side='right', padx=5)
 
 
     def connect_to_sharepoint_direct(self, site_url, username, password):
@@ -10937,36 +10947,36 @@ class AITCMMSSystem:
     
     def create_analytics_dashboard_tab(self):
         """Analytics and dashboard tab"""
-        self.analytics_frame = ttk.Frame(self.notebook)
+        self.analytics_frame = QWidget(self.notebook)
         self.notebook.add(self.analytics_frame, text="Analytics Dashboard")
         
         # Analytics controls
-        controls_frame = ttk.LabelFrame(self.analytics_frame, text="Analytics Controls", padding=10)
+        controls_frame = QLabelFrame(self.analytics_frame, text="Analytics Controls", padding=10)
         controls_frame.pack(fill='x', padx=10, pady=5)
         
-        ttk.Button(controls_frame, text="Refresh Dashboard", 
+        QPushButton(controls_frame, text="Refresh Dashboard", 
                   command=self.refresh_analytics_dashboard).pack(side='left', padx=5)
-        ttk.Button(controls_frame, text="Equipment Analytics", 
+        QPushButton(controls_frame, text="Equipment Analytics", 
                   command=self.show_equipment_analytics).pack(side='left', padx=5)
-        ttk.Button(controls_frame, text="PM Trends", 
+        QPushButton(controls_frame, text="PM Trends", 
                   command=self.show_pm_trends).pack(side='left', padx=5)
-        ttk.Button(controls_frame, text="Export Analytics", 
+        QPushButton(controls_frame, text="Export Analytics", 
                   command=self.export_analytics).pack(side='left', padx=5)
         
         # Dashboard display
-        dashboard_frame = ttk.LabelFrame(self.analytics_frame, text="Analytics Dashboard", padding=10)
+        dashboard_frame = QLabelFrame(self.analytics_frame, text="Analytics Dashboard", padding=10)
         dashboard_frame.pack(fill='both', expand=True, padx=10, pady=5)
         
         # Create notebook for different analytics views
-        self.analytics_notebook = ttk.Notebook(dashboard_frame)
+        self.analytics_notebook = QTabWidget(dashboard_frame)
         self.analytics_notebook.pack(fill='both', expand=True)
         
         # Overview tab
-        overview_frame = ttk.Frame(self.analytics_notebook)
+        overview_frame = QWidget(self.analytics_notebook)
         self.analytics_notebook.add(overview_frame, text="Overview")
         
-        self.analytics_text = tk.Text(overview_frame, wrap='word', font=('Courier', 10))
-        analytics_scrollbar = ttk.Scrollbar(overview_frame, orient='vertical', command=self.analytics_text.yview)
+        self.analytics_text = QTextEdit(overview_frame, wrap='word', font=('Courier', 10))
+        analytics_scrollbar = QScrollArea(overview_frame, orient='vertical', command=self.analytics_text.yview)
         self.analytics_text.configure(yscrollcommand=analytics_scrollbar.set)
         
         self.analytics_text.pack(side='left', fill='both', expand=True)
@@ -11039,15 +11049,15 @@ class AITCMMSSystem:
         try:
             # Validate required fields
             if not self.completion_bfm_var.get():
-                messagebox.showerror("Error", "Please enter BFM Equipment Number")
+                QMessageBox.critical(self, "Error", "Please enter BFM Equipment Number")
                 return
 
             if not self.pm_type_var.get():
-                messagebox.showerror("Error", "Please select PM Type")
+                QMessageBox.critical(self, "Error", "Please select PM Type")
                 return
 
             if not self.completion_tech_var.get():
-                messagebox.showerror("Error", "Please select Technician")
+                QMessageBox.critical(self, "Error", "Please select Technician")
                 return
 
             # Get form data
@@ -11079,7 +11089,7 @@ class AITCMMSSystem:
             validation_result = self.validate_pm_completion(cursor, bfm_no, pm_type, technician, completion_date)
             if not validation_result['valid']:
                 # Show detailed warning dialog
-                response = messagebox.askyesno(
+                response = QMessageBox.question(self, 
                     "WARNING: Potential Duplicate PM Detected", 
                     f"{validation_result['message']}\n\n"
                     f"Details:\n"
@@ -11157,7 +11167,7 @@ class AITCMMSSystem:
                     verification_result = self.verify_pm_completion_saved(cursor, bfm_no, pm_type, technician, completion_date)
                 
                     if verification_result['verified']:
-                        messagebox.showinfo("CHECK: Success", 
+                        QMessageBox.information(self, "CHECK: Success", 
                                         f"PM completion recorded and verified!\n\n"
                                         f"Equipment: {bfm_no}\n"
                                         f"PM Type: {pm_type}\n"
@@ -11174,7 +11184,7 @@ class AITCMMSSystem:
                         if hasattr(self, 'auto_sync_after_action'):
                             self.auto_sync_after_action()
                     else:
-                        messagebox.showerror("WARNING: Warning", 
+                        QMessageBox.critical(self, "WARNING: Warning", 
                                         f"PM was saved but verification failed!\n\n"
                                         f"{verification_result['message']}\n\n"
                                         f"Please check the PM History tab to confirm the completion was recorded.")
@@ -11182,7 +11192,7 @@ class AITCMMSSystem:
                 else:
                     # Rollback on failure
                     cursor.execute('ROLLBACK')
-                    messagebox.showerror("Error", "Failed to process PM completion. Transaction rolled back.")
+                    QMessageBox.critical(self, "Error", "Failed to process PM completion. Transaction rolled back.")
                 
             except Exception as e:
                 # Rollback on exception
@@ -11190,7 +11200,7 @@ class AITCMMSSystem:
                 raise e
 
         except Exception as e:
-            messagebox.showerror("Error", f"Failed to submit PM completion: {str(e)}")
+            QMessageBox.critical(self, "Error", f"Failed to submit PM completion: {str(e)}")
             import traceback
             print(f"PM Completion Error: {traceback.format_exc()}")
     
@@ -11597,13 +11607,13 @@ class AITCMMSSystem:
         
             self.conn.commit()
         
-            messagebox.showinfo("Success", 
+            QMessageBox.information(self, "Success", 
                             f"Processed {len(completions)} completions\n"
                             f"Updated {updated_count} weekly schedule records!")
             print(f"Final result: Updated {updated_count} out of {len(completions)} completions")
         
         except Exception as e:
-            messagebox.showerror("Error", f"Failed to fix weekly schedule: {str(e)}")
+            QMessageBox.critical(self, "Error", f"Failed to fix weekly schedule: {str(e)}")
             print(f"Error: {e}")
     
     
@@ -11735,20 +11745,20 @@ class AITCMMSSystem:
                     report += "\n"
             
                 # Show in a dialog
-                dialog = tk.Toplevel(self.root)
-                dialog.title(f"PM History - {bfm_no}")
+                dialog = QDialog(self.root)
+                dialog.setWindowTitle(f"PM History - {bfm_no}")
                 dialog.geometry("600x400")
             
-                text_widget = tk.Text(dialog, wrap='word', font=('Courier', 10))
+                text_widget = QTextEdit(dialog, wrap='word', font=('Courier', 10))
                 text_widget.pack(fill='both', expand=True, padx=10, pady=10)
                 text_widget.insert('1.0', report)
                 text_widget.config(state='disabled')
             
             else:
-                messagebox.showinfo("No History", f"No PM completions found for equipment {bfm_no}")
+                QMessageBox.information(self, "No History", f"No PM completions found for equipment {bfm_no}")
             
         except Exception as e:
-            messagebox.showerror("Error", f"Failed to load PM history: {str(e)}")
+            QMessageBox.critical(self, "Error", f"Failed to load PM history: {str(e)}")
       
     def load_cannot_find_assets(self):
         """Load cannot find assets data and store for filtering"""
@@ -11888,7 +11898,7 @@ class AITCMMSSystem:
             
         except Exception as e:
             print(f"Error loading run to failure assets: {e}")
-            messagebox.showerror("Error", f"Failed to load Run to Failure assets: {str(e)}")
+            QMessageBox.critical(self, "Error", f"Failed to load Run to Failure assets: {str(e)}")
             
             
     # 9. EXPORT CANNOT FIND TO PDF
@@ -11953,10 +11963,10 @@ class AITCMMSSystem:
                 story.append(Paragraph("No missing assets found.", styles['Normal']))
         
             doc.build(story)
-            messagebox.showinfo("Success", f"Cannot Find report exported to: {filename}")
+            QMessageBox.information(self, "Success", f"Cannot Find report exported to: {filename}")
         
         except Exception as e:
-            messagebox.showerror("Error", f"Failed to export Cannot Find report: {str(e)}")
+            QMessageBox.critical(self, "Error", f"Failed to export Cannot Find report: {str(e)}")
 
     # 10. EXPORT RUN TO FAILURE TO PDF
     def export_run_to_failure_pdf(self):
@@ -12020,17 +12030,17 @@ class AITCMMSSystem:
                 story.append(Paragraph("No Run to Failure assets found.", styles['Normal']))
         
             doc.build(story)
-            messagebox.showinfo("Success", f"Run to Failure report exported to: {filename}")
+            QMessageBox.information(self, "Success", f"Run to Failure report exported to: {filename}")
         
         except Exception as e:
-            messagebox.showerror("Error", f"Failed to export Run to Failure report: {str(e)}")
+            QMessageBox.critical(self, "Error", f"Failed to export Run to Failure report: {str(e)}")
 
     # 11. MARK ASSET AS FOUND
     def mark_asset_found(self):
         """Mark a cannot find asset as found and reactivate with PM configuration"""
         selected = self.cannot_find_tree.selection()
         if not selected:
-            messagebox.showwarning("Warning", "Please select an asset to mark as found")
+            QMessageBox.warning(self, "Warning", "Please select an asset to mark as found")
             return
 
         item = self.cannot_find_tree.item(selected[0])
@@ -12038,10 +12048,10 @@ class AITCMMSSystem:
         description = str(item['values'][1]) if len(item['values']) > 1 else "N/A"
 
         # Create reactivation dialog
-        dialog = tk.Toplevel(self.root)
-        dialog.title(f"Reactivate Asset - {bfm_no}")
+        dialog = QDialog(self.root)
+        dialog.setWindowTitle(f"Reactivate Asset - {bfm_no}")
         dialog.geometry("700x550")
-        dialog.transient(self.root)
+        dialog.setParent(self.root)
         dialog.grab_set()
 
         # Center the dialog
@@ -12051,24 +12061,24 @@ class AITCMMSSystem:
         dialog.geometry(f"700x550+{x}+{y}")
 
         # Header
-        header_frame = ttk.Frame(dialog, padding=15)
+        header_frame = QWidget(dialog, padding=15)
         header_frame.pack(fill='x')
 
-        ttk.Label(header_frame, text=f"Reactivate Found Asset for PM Scheduling",
+        QLabel(header_frame, text=f"Reactivate Found Asset for PM Scheduling",
                 font=('Arial', 14, 'bold')).pack()
-        ttk.Label(header_frame, text=f"BFM: {bfm_no}",
+        QLabel(header_frame, text=f"BFM: {bfm_no}",
                 font=('Arial', 10)).pack(pady=5)
-        ttk.Label(header_frame, text=f"Description: {description}",
+        QLabel(header_frame, text=f"Description: {description}",
                 font=('Arial', 9), wraplength=650).pack()
 
         # Separator
-        ttk.Separator(dialog, orient='horizontal').pack(fill='x', pady=10)
+        QFrame(dialog, orient='horizontal').pack(fill='x', pady=10)
 
         # PM Frequency Selection Frame
-        pm_frame = ttk.LabelFrame(dialog, text="Select PM Frequencies to Enable", padding=20)
+        pm_frame = QLabelFrame(dialog, text="Select PM Frequencies to Enable", padding=20)
         pm_frame.pack(fill='x', padx=20, pady=10)
 
-        ttk.Label(pm_frame, text="Choose which preventive maintenance schedules to enable:",
+        QLabel(pm_frame, text="Choose which preventive maintenance schedules to enable:",
                 font=('Arial', 10)).pack(anchor='w', pady=(0, 15))
 
         # PM Type Checkboxes
@@ -12077,34 +12087,34 @@ class AITCMMSSystem:
         annual_var = tk.BooleanVar(value=True)  # Default: Annual enabled
 
         # Monthly PM
-        monthly_frame = ttk.Frame(pm_frame)
+        monthly_frame = QWidget(pm_frame)
         monthly_frame.pack(fill='x', pady=5)
-        monthly_cb = ttk.Checkbutton(monthly_frame, text="Monthly PM (every 30 days)",
+        monthly_cb = QCheckBox(monthly_frame, text="Monthly PM (every 30 days)",
                                     variable=monthly_var)
         monthly_cb.pack(side='left')
-        ttk.Label(monthly_frame, text="Recommended for most equipment",
+        QLabel(monthly_frame, text="Recommended for most equipment",
                 foreground='green', font=('Arial', 8, 'italic')).pack(side='left', padx=10)
 
         # Six Month PM
-        six_month_frame = ttk.Frame(pm_frame)
+        six_month_frame = QWidget(pm_frame)
         six_month_frame.pack(fill='x', pady=5)
-        six_month_cb = ttk.Checkbutton(six_month_frame, text="Six Month PM (every 180 days)",
+        six_month_cb = QCheckBox(six_month_frame, text="Six Month PM (every 180 days)",
                                        variable=six_month_var)
         six_month_cb.pack(side='left')
-        ttk.Label(six_month_frame, text="For semi-annual maintenance",
+        QLabel(six_month_frame, text="For semi-annual maintenance",
                 foreground='blue', font=('Arial', 8, 'italic')).pack(side='left', padx=10)
 
         # Annual PM
-        annual_frame = ttk.Frame(pm_frame)
+        annual_frame = QWidget(pm_frame)
         annual_frame.pack(fill='x', pady=5)
-        annual_cb = ttk.Checkbutton(annual_frame, text="Annual PM (every 365 days)",
+        annual_cb = QCheckBox(annual_frame, text="Annual PM (every 365 days)",
                                     variable=annual_var)
         annual_cb.pack(side='left')
-        ttk.Label(annual_frame, text="For yearly inspection",
+        QLabel(annual_frame, text="For yearly inspection",
                 foreground='orange', font=('Arial', 8, 'italic')).pack(side='left', padx=10)
 
         # Information text
-        info_frame = ttk.Frame(dialog, padding=20)
+        info_frame = QWidget(dialog, padding=20)
         info_frame.pack(fill='x', padx=20, pady=10)
 
         info_text = ("The asset will be:\n"
@@ -12112,14 +12122,14 @@ class AITCMMSSystem:
                     "• Set to Active status in the main equipment list\n"
                     "• Scheduled for the selected preventive maintenance frequencies")
 
-        ttk.Label(info_frame, text=info_text, font=('Arial', 9),
+        QLabel(info_frame, text=info_text, font=('Arial', 9),
                 foreground='#444444', justify='left').pack(anchor='w')
 
         def validate_and_reactivate():
             """Validate selections and perform reactivation"""
             # Validate at least one PM is selected
             if not monthly_var.get() and not six_month_var.get() and not annual_var.get():
-                messagebox.showerror("Validation Error",
+                QMessageBox.critical(self, "Validation Error",
                                    "You must select at least one PM frequency to reactivate.\n\n"
                                    "If you don't want to schedule PMs, leave the asset in Cannot Find status.")
                 return
@@ -12143,7 +12153,7 @@ class AITCMMSSystem:
                           f"• Removed from Cannot Find list\n\n"
                           f"Continue?")
 
-            result = messagebox.askyesno("Confirm Reactivation", confirm_msg)
+            result = QMessageBox.question(self, "Confirm Reactivation", confirm_msg)
 
             if not result:
                 return
@@ -12173,7 +12183,7 @@ class AITCMMSSystem:
 
                 self.conn.commit()
 
-                messagebox.showinfo(
+                QMessageBox.information(self, 
                     "Success",
                     f"Asset {bfm_no} successfully reactivated!\n\n"
                     f"Status: Active\n"
@@ -12181,7 +12191,7 @@ class AITCMMSSystem:
                     f"Equipment moved back to main equipment list"
                 )
 
-                dialog.destroy()
+                dialog.close()
 
                 # Refresh all displays
                 self.refresh_equipment_list()
@@ -12191,16 +12201,16 @@ class AITCMMSSystem:
                 self.update_status(f"Reactivated asset {bfm_no} with {pm_enabled} PMs")
 
             except Exception as e:
-                messagebox.showerror("Error", f"Failed to reactivate asset: {str(e)}")
+                QMessageBox.critical(self, "Error", f"Failed to reactivate asset: {str(e)}")
 
         # Buttons
-        button_frame = ttk.Frame(dialog)
+        button_frame = QWidget(dialog)
         button_frame.pack(fill='x', padx=20, pady=15)
 
-        ttk.Button(button_frame, text="Reactivate Asset",
+        QPushButton(button_frame, text="Reactivate Asset",
                    command=validate_and_reactivate,
                    style='Accent.TButton').pack(side='right', padx=5)
-        ttk.Button(button_frame, text="Cancel",
+        QPushButton(button_frame, text="Cancel",
                    command=dialog.destroy).pack(side='right')
 
     # 12. REACTIVATE ASSET
@@ -12208,7 +12218,7 @@ class AITCMMSSystem:
         """Enhanced method to reactivate multiple run to failure assets at once"""
         selected = self.run_to_failure_tree.selection()
         if not selected:
-            messagebox.showwarning("Warning", "Please select one or more assets to reactivate")
+            QMessageBox.warning(self, "Warning", "Please select one or more assets to reactivate")
             return
 
         # Get all selected assets
@@ -12220,10 +12230,10 @@ class AITCMMSSystem:
             selected_assets.append((bfm_no, description))
     
         # Create reactivation dialog
-        dialog = tk.Toplevel(self.root)
-        dialog.title(f"Reactivate Assets - {len(selected_assets)} Selected")
+        dialog = QDialog(self.root)
+        dialog.setWindowTitle(f"Reactivate Assets - {len(selected_assets)} Selected")
         dialog.geometry("700x650")
-        dialog.transient(self.root)
+        dialog.setParent(self.root)
         dialog.grab_set()
     
         # Center the dialog
@@ -12233,42 +12243,42 @@ class AITCMMSSystem:
         dialog.geometry(f"700x650+{x}+{y}")
     
         # Header
-        header_frame = ttk.Frame(dialog, padding=15)
+        header_frame = QWidget(dialog, padding=15)
         header_frame.pack(fill='x')
     
         if len(selected_assets) == 1:
-            ttk.Label(header_frame, text=f"Reactivate Asset for PM Scheduling", 
+            QLabel(header_frame, text=f"Reactivate Asset for PM Scheduling", 
                     font=('Arial', 14, 'bold')).pack()
-            ttk.Label(header_frame, text=f"BFM: {selected_assets[0][0]}", 
+            QLabel(header_frame, text=f"BFM: {selected_assets[0][0]}", 
                     font=('Arial', 10)).pack(pady=5)
-            ttk.Label(header_frame, text=f"Description: {selected_assets[0][1]}", 
+            QLabel(header_frame, text=f"Description: {selected_assets[0][1]}", 
                     font=('Arial', 9), wraplength=650).pack()
         else:
-            ttk.Label(header_frame, text=f"Bulk Reactivate {len(selected_assets)} Assets", 
+            QLabel(header_frame, text=f"Bulk Reactivate {len(selected_assets)} Assets", 
                     font=('Arial', 14, 'bold')).pack()
-            ttk.Label(header_frame, text=f"All selected assets will use the same PM frequencies", 
+            QLabel(header_frame, text=f"All selected assets will use the same PM frequencies", 
                     font=('Arial', 10), foreground='blue').pack(pady=5)
     
         # Separator
-        ttk.Separator(dialog, orient='horizontal').pack(fill='x', pady=10)
+        QFrame(dialog, orient='horizontal').pack(fill='x', pady=10)
     
         # Show list of selected assets if multiple
         if len(selected_assets) > 1:
-            assets_frame = ttk.LabelFrame(dialog, text=f"Selected Assets ({len(selected_assets)})", padding=10)
+            assets_frame = QLabelFrame(dialog, text=f"Selected Assets ({len(selected_assets)})", padding=10)
             assets_frame.pack(fill='both', expand=True, padx=20, pady=(0, 10))
             
             # Create scrollable list
-            list_container = ttk.Frame(assets_frame)
+            list_container = QWidget(assets_frame)
             list_container.pack(fill='both', expand=True)
             
-            assets_tree = ttk.Treeview(list_container, columns=('BFM', 'Description'), 
+            assets_tree = QTreeWidget(list_container, columns=('BFM', 'Description'), 
                                         show='headings', height=6)
             assets_tree.heading('BFM', text='BFM Equipment No.')
             assets_tree.heading('Description', text='Description')
             assets_tree.column('BFM', width=150)
             assets_tree.column('Description', width=450)
             
-            scrollbar = ttk.Scrollbar(list_container, orient='vertical', command=assets_tree.yview)
+            scrollbar = QScrollArea(list_container, orient='vertical', command=assets_tree.yview)
             assets_tree.configure(yscrollcommand=scrollbar.set)
             
             assets_tree.pack(side='left', fill='both', expand=True)
@@ -12279,7 +12289,7 @@ class AITCMMSSystem:
                 assets_tree.insert('', 'end', values=(bfm, desc))
     
         # PM Frequency Selection Frame
-        pm_frame = ttk.LabelFrame(dialog, text="Select PM Frequencies to Enable", padding=20)
+        pm_frame = QLabelFrame(dialog, text="Select PM Frequencies to Enable", padding=20)
         pm_frame.pack(fill='x', padx=20, pady=10)
         
         # Instructions
@@ -12288,7 +12298,7 @@ class AITCMMSSystem:
         else:
             instruction_text = "Choose which preventive maintenance schedules to enable:"
     
-        ttk.Label(pm_frame, text=instruction_text,
+        QLabel(pm_frame, text=instruction_text,
                 font=('Arial', 10)).pack(anchor='w', pady=(0, 15))
     
         # PM Type Checkboxes
@@ -12297,42 +12307,42 @@ class AITCMMSSystem:
         annual_var = tk.BooleanVar(value=True)  # Default: Annual enabled
         
         # Monthly PM
-        monthly_frame = ttk.Frame(pm_frame)
+        monthly_frame = QWidget(pm_frame)
         monthly_frame.pack(fill='x', pady=5)
-        monthly_cb = ttk.Checkbutton(monthly_frame, text="Monthly PM (every 30 days)", 
+        monthly_cb = QCheckBox(monthly_frame, text="Monthly PM (every 30 days)", 
                                     variable=monthly_var)
         monthly_cb.pack(side='left')
-        ttk.Label(monthly_frame, text="Recommended for most equipment", 
+        QLabel(monthly_frame, text="Recommended for most equipment", 
                 foreground='green', font=('Arial', 8, 'italic')).pack(side='left', padx=10)
     
         # Six Month PM
-        six_month_frame = ttk.Frame(pm_frame)
+        six_month_frame = QWidget(pm_frame)
         six_month_frame.pack(fill='x', pady=5)
-        six_month_cb = ttk.Checkbutton(six_month_frame, text="Six Month PM (every 180 days)", 
+        six_month_cb = QCheckBox(six_month_frame, text="Six Month PM (every 180 days)", 
                                         variable=six_month_var)
         six_month_cb.pack(side='left')
-        ttk.Label(six_month_frame, text="Less frequent PM cycle", 
+        QLabel(six_month_frame, text="Less frequent PM cycle", 
                 foreground='orange', font=('Arial', 8, 'italic')).pack(side='left', padx=10)
     
         # Annual PM
-        annual_frame = ttk.Frame(pm_frame)
+        annual_frame = QWidget(pm_frame)
         annual_frame.pack(fill='x', pady=5)
-        annual_cb = ttk.Checkbutton(annual_frame, text="Annual PM (yearly)", 
+        annual_cb = QCheckBox(annual_frame, text="Annual PM (yearly)", 
                                     variable=annual_var)
         annual_cb.pack(side='left')
-        ttk.Label(annual_frame, text="Recommended for comprehensive checks", 
+        QLabel(annual_frame, text="Recommended for comprehensive checks", 
                 foreground='green', font=('Arial', 8, 'italic')).pack(side='left', padx=10)
     
         # Warning label
-        warning_frame = ttk.Frame(pm_frame)
+        warning_frame = QWidget(pm_frame)
         warning_frame.pack(fill='x', pady=15)
-        warning_label = ttk.Label(warning_frame, 
+        warning_label = QLabel(warning_frame, 
                                 text="Note: You must select at least one PM frequency to reactivate.",
                                 foreground='blue', font=('Arial', 9, 'italic'), wraplength=600)
         warning_label.pack()
     
         # Info box
-        info_frame = ttk.LabelFrame(dialog, text="Reactivation Summary", padding=10)
+        info_frame = QLabelFrame(dialog, text="Reactivation Summary", padding=10)
         info_frame.pack(fill='x', padx=20, pady=(0, 10))
         
         if len(selected_assets) > 1:
@@ -12348,13 +12358,13 @@ class AITCMMSSystem:
         - Remove from Run to Failure list
         - Resume normal PM scheduling"""
     
-        ttk.Label(info_frame, text=info_text, justify='left').pack(anchor='w')
+        QLabel(info_frame, text=info_text, justify='left').pack(anchor='w')
     
         def validate_and_reactivate():
             """Validate selections and reactivate the asset(s)"""
             # Check that at least one PM type is selected
             if not monthly_var.get() and not six_month_var.get() and not annual_var.get():
-                messagebox.showerror("Validation Error", 
+                QMessageBox.critical(self, "Validation Error", 
                                    "You must select at least one PM frequency to reactivate.\n\n"
                                    "If you don't want to schedule PMs, leave the assets in Run to Failure status.")
                 return
@@ -12382,7 +12392,7 @@ class AITCMMSSystem:
                               f"PM Frequencies: {pm_enabled}\n\n"
                               f"Continue?")
         
-            result = messagebox.askyesno("Confirm Reactivation", confirm_msg)
+            result = QMessageBox.question(self, "Confirm Reactivation", confirm_msg)
         
             if not result:
                 return
@@ -12424,7 +12434,7 @@ class AITCMMSSystem:
             
                 # Show results
                 if len(selected_assets) == 1:
-                    messagebox.showinfo(
+                    QMessageBox.information(self, 
                         "Success", 
                         f"Asset {selected_assets[0][0]} successfully reactivated!\n\n"
                         f"Status: Active\n"
@@ -12443,11 +12453,11 @@ class AITCMMSSystem:
                     result_msg += f"\n\nPMs Enabled: {pm_enabled}"
                 
                     if failed:
-                        messagebox.showwarning("Partial Success", result_msg)
+                        QMessageBox.warning(self, "Partial Success", result_msg)
                     else:
-                        messagebox.showinfo("Success", result_msg)
+                        QMessageBox.information(self, "Success", result_msg)
             
-                dialog.destroy()
+                dialog.close()
             
                 # Refresh all displays
                 self.refresh_equipment_list()
@@ -12460,10 +12470,10 @@ class AITCMMSSystem:
                     self.update_status(f"Reactivated {successful} assets with {pm_enabled} PMs")
             
             except Exception as e:
-                messagebox.showerror("Error", f"Failed to reactivate assets: {str(e)}")
+                QMessageBox.critical(self, "Error", f"Failed to reactivate assets: {str(e)}")
     
         # Buttons
-        button_frame = ttk.Frame(dialog)
+        button_frame = QWidget(dialog)
         button_frame.pack(fill='x', padx=20, pady=15)
         
         if len(selected_assets) == 1:
@@ -12471,10 +12481,10 @@ class AITCMMSSystem:
         else:
             button_text = f"CHECK: Reactivate {len(selected_assets)} Assets"
     
-        ttk.Button(button_frame, text=button_text, 
+        QPushButton(button_frame, text=button_text, 
                    command=validate_and_reactivate,
                    style='Accent.TButton').pack(side='left', padx=5)
-        ttk.Button(button_frame, text="Cancel", 
+        QPushButton(button_frame, text="Cancel", 
                    command=dialog.destroy).pack(side='left', padx=5)
     
     
@@ -12665,7 +12675,7 @@ class AITCMMSSystem:
             self.update_status(f"Weekly report generated - {completion_rate:.1f}% completion rate")
             
         except Exception as e:
-            messagebox.showerror("Error", f"Failed to generate weekly report: {str(e)}")
+            QMessageBox.critical(self, "Error", f"Failed to generate weekly report: {str(e)}")
     
     def generate_monthly_report(self):
         """Generate monthly PM performance report"""
@@ -12740,7 +12750,7 @@ class AITCMMSSystem:
             self.update_status("Monthly report generated")
             
         except Exception as e:
-            messagebox.showerror("Error", f"Failed to generate monthly report: {str(e)}")
+            QMessageBox.critical(self, "Error", f"Failed to generate monthly report: {str(e)}")
     
     def export_reports(self):
         """Export reports to file"""
@@ -12753,20 +12763,20 @@ class AITCMMSSystem:
             with open(filename, 'w', encoding='utf-8') as f:
                 f.write(content)
             
-            messagebox.showinfo("Success", f"Reports exported to: {filename}")
+            QMessageBox.information(self, "Success", f"Reports exported to: {filename}")
             
         except Exception as e:
-            messagebox.showerror("Error", f"Failed to export reports: {str(e)}")
+            QMessageBox.critical(self, "Error", f"Failed to export reports: {str(e)}")
     
     
     
     
     def create_cm_dialog(self):
         """Create new Corrective Maintenance with calendar date picker"""
-        dialog = tk.Toplevel(self.root)
-        dialog.title("Create New Corrective Maintenance")
+        dialog = QDialog(self.root)
+        dialog.setWindowTitle("Create New Corrective Maintenance")
         dialog.geometry("600x550")
-        dialog.transient(self.root)
+        dialog.setParent(self.root)
         dialog.grab_set()
 
         # Generate next CM number in format CM-YYYYMMDD-XXXX
@@ -12785,21 +12795,21 @@ class AITCMMSSystem:
         row = 0
 
         # CM Number (auto-generated, read-only)
-        ttk.Label(dialog, text="CM Number:", font=('Arial', 10, 'bold')).grid(row=row, column=0, sticky='w', padx=10, pady=5)
+        QLabel(dialog, text="CM Number:", font=('Arial', 10, 'bold')).grid(row=row, column=0, sticky='w', padx=10, pady=5)
         cm_number_var = tk.StringVar(value=next_cm_num)
-        ttk.Entry(dialog, textvariable=cm_number_var, width=20, state='readonly').grid(row=row, column=1, sticky='w', padx=10, pady=5)
+        QLineEdit(dialog, textvariable=cm_number_var, width=20, state='readonly').grid(row=row, column=1, sticky='w', padx=10, pady=5)
         row += 1
 
         # ========== ENHANCED DATE PICKER SECTION ==========
-        ttk.Label(dialog, text="CM Date:", font=('Arial', 10)).grid(row=row, column=0, sticky='w', padx=10, pady=5)
+        QLabel(dialog, text="CM Date:", font=('Arial', 10)).grid(row=row, column=0, sticky='w', padx=10, pady=5)
         
         # Create frame for date entry and calendar button
-        date_frame = ttk.Frame(dialog)
+        date_frame = QWidget(dialog)
         date_frame.grid(row=row, column=1, sticky='w', padx=10, pady=5)
         
         # Date entry field - default to today's date
         cm_date_var = tk.StringVar(value=datetime.now().strftime('%Y-%m-%d'))
-        date_entry = ttk.Entry(date_frame, textvariable=cm_date_var, width=15)
+        date_entry = QLineEdit(date_frame, textvariable=cm_date_var, width=15)
         date_entry.pack(side='left', padx=(0, 5))
         
         # Calendar picker button
@@ -12808,10 +12818,10 @@ class AITCMMSSystem:
             from tkcalendar import Calendar
         
             # Create calendar dialog
-            cal_dialog = tk.Toplevel(dialog)
-            cal_dialog.title("Select Date")
+            cal_dialog = QDialog(dialog)
+            cal_dialog.setWindowTitle("Select Date")
             cal_dialog.geometry("300x300")
-            cal_dialog.transient(dialog)
+            cal_dialog.setParent(dialog)
             cal_dialog.grab_set()
         
             # Parse current date or use today
@@ -12831,64 +12841,64 @@ class AITCMMSSystem:
         
             def select_date():
                 cm_date_var.set(cal.get_date())
-                cal_dialog.destroy()
+                cal_dialog.close()
         
             # Buttons
-            button_frame = ttk.Frame(cal_dialog)
+            button_frame = QWidget(cal_dialog)
             button_frame.pack(pady=10)
-            ttk.Button(button_frame, text="Select", command=select_date).pack(side='left', padx=5)
-            ttk.Button(button_frame, text="Today", 
+            QPushButton(button_frame, text="Select", command=select_date).pack(side='left', padx=5)
+            QPushButton(button_frame, text="Today", 
                     command=lambda: [cm_date_var.set(datetime.now().strftime('%Y-%m-%d')), 
-                                    cal_dialog.destroy()]).pack(side='left', padx=5)
-            ttk.Button(button_frame, text="Cancel", command=cal_dialog.destroy).pack(side='left', padx=5)
+                                    cal_dialog.close()]).pack(side='left', padx=5)
+            QPushButton(button_frame, text="Cancel", command=cal_dialog.destroy).pack(side='left', padx=5)
     
         # Calendar button with icon
-        ttk.Button(date_frame, text="Pick Date", command=open_calendar).pack(side='left')
+        QPushButton(date_frame, text="Pick Date", command=open_calendar).pack(side='left')
         
         # Date format helper label
-        ttk.Label(dialog, text="Format: YYYY-MM-DD", 
+        QLabel(dialog, text="Format: YYYY-MM-DD", 
                 font=('Arial', 8), foreground='gray').grid(row=row, column=2, sticky='w', padx=5)
         row += 1
         # ================================================
 
         # Equipment Selection
-        ttk.Label(dialog, text="Equipment (BFM):").grid(row=row, column=0, sticky='w', padx=10, pady=5)
+        QLabel(dialog, text="Equipment (BFM):").grid(row=row, column=0, sticky='w', padx=10, pady=5)
         bfm_var = tk.StringVar()
         
         cursor.execute("SELECT DISTINCT bfm_equipment_no FROM equipment WHERE status = 'Active' ORDER BY bfm_equipment_no")
         equipment_list = [row[0] for row in cursor.fetchall()]
         
-        bfm_combo = ttk.Combobox(dialog, textvariable=bfm_var, values=equipment_list, width=20)
+        bfm_combo = QComboBox(dialog, textvariable=bfm_var, values=equipment_list, width=20)
         bfm_combo.grid(row=row, column=1, sticky='w', padx=10, pady=5)
         row += 1
 
         # Description
-        ttk.Label(dialog, text="Description:").grid(row=row, column=0, sticky='nw', padx=10, pady=5)
-        description_text = tk.Text(dialog, width=40, height=6)
+        QLabel(dialog, text="Description:").grid(row=row, column=0, sticky='nw', padx=10, pady=5)
+        description_text = QTextEdit(dialog, width=40, height=6)
         description_text.grid(row=row, column=1, columnspan=2, sticky='w', padx=10, pady=5)
         row += 1
 
         # Priority
-        ttk.Label(dialog, text="Priority:").grid(row=row, column=0, sticky='w', padx=10, pady=5)
+        QLabel(dialog, text="Priority:").grid(row=row, column=0, sticky='w', padx=10, pady=5)
         priority_var = tk.StringVar(value="Medium")
-        priority_combo = ttk.Combobox(dialog, textvariable=priority_var, 
+        priority_combo = QComboBox(dialog, textvariable=priority_var, 
                                     values=["Low", "Medium", "High", "Critical"], 
                                     state="readonly", width=20)
         priority_combo.grid(row=row, column=1, sticky='w', padx=10, pady=5)
         row += 1
 
         # Assigned Technician
-        ttk.Label(dialog, text="Assigned Technician:").grid(row=row, column=0, sticky='w', padx=10, pady=5)
+        QLabel(dialog, text="Assigned Technician:").grid(row=row, column=0, sticky='w', padx=10, pady=5)
         assigned_var = tk.StringVar()
 
         if self.current_user_role == 'Technician':
             # Auto-assign to current technician and make read-only
             assigned_var.set(self.user_name)
-            assigned_entry = ttk.Entry(dialog, textvariable=assigned_var, width=20, state='readonly')
+            assigned_entry = QLineEdit(dialog, textvariable=assigned_var, width=20, state='readonly')
             assigned_entry.grid(row=row, column=1, sticky='w', padx=10, pady=5)
         else:
             # Manager can assign to anyone
-            assigned_combo = ttk.Combobox(dialog, textvariable=assigned_var, 
+            assigned_combo = QComboBox(dialog, textvariable=assigned_var, 
                                         values=self.technicians, width=20)
             assigned_combo.grid(row=row, column=1, sticky='w', padx=10, pady=5)
         row += 1
@@ -12900,7 +12910,7 @@ class AITCMMSSystem:
                 cm_date_input = cm_date_var.get().strip()
         
                 if not cm_date_input:
-                    messagebox.showerror("Error", "Please enter a CM date")
+                    QMessageBox.critical(self, "Error", "Please enter a CM date")
                     return
         
                 # Try to parse the date to validate format
@@ -12908,14 +12918,14 @@ class AITCMMSSystem:
                     parsed_date = datetime.strptime(cm_date_input, '%Y-%m-%d')
             
                     if parsed_date > datetime.now() + timedelta(days=1):
-                        result = messagebox.askyesno("Future Date Warning", 
+                        result = QMessageBox.question(self, "Future Date Warning", 
                                                 f"The CM date '{cm_date_input}' is in the future.\n\n"
                                                 f"Are you sure this is correct?")
                         if not result:
                             return
             
                     if parsed_date < datetime.now() - timedelta(days=365):
-                        result = messagebox.askyesno("Old Date Warning", 
+                        result = QMessageBox.question(self, "Old Date Warning", 
                                                 f"The CM date '{cm_date_input}' is more than 1 year ago.\n\n"
                                                 f"Are you sure this is correct?")
                         if not result:
@@ -12924,7 +12934,7 @@ class AITCMMSSystem:
                     validated_date = parsed_date.strftime('%Y-%m-%d')
             
                 except ValueError:
-                    messagebox.showerror("Invalid Date Format", 
+                    QMessageBox.critical(self, "Invalid Date Format", 
                                     f"Please enter the date in YYYY-MM-DD format.\n\n"
                                     f"Examples:\n"
                                     f"- 2025-08-04 (August 4th, 2025)\n"
@@ -12934,11 +12944,11 @@ class AITCMMSSystem:
         
                 # Validate other required fields
                 if not bfm_var.get():
-                    messagebox.showerror("Error", "Please select equipment")
+                    QMessageBox.critical(self, "Error", "Please select equipment")
                     return
             
                 if not description_text.get('1.0', 'end-1c').strip():
-                    messagebox.showerror("Error", "Please enter a description")
+                    QMessageBox.critical(self, "Error", "Please enter a description")
                     return
         
                 # Save to database with the manually entered date
@@ -12957,24 +12967,24 @@ class AITCMMSSystem:
                 ))
                 self.conn.commit()
             
-                messagebox.showinfo("Success", 
+                QMessageBox.information(self, "Success", 
                                 f"Corrective Maintenance created successfully!\n\n"
                                 f"CM Number: {cm_number_var.get()}\n"
                                 f"CM Date: {validated_date}\n"
                                 f"Equipment: {bfm_var.get()}\n"
                                 f"Assigned to: {assigned_var.get()}")
-                dialog.destroy()
+                dialog.close()
                 self.load_corrective_maintenance()
         
             except Exception as e:
-                messagebox.showerror("Error", f"Failed to create CM: {str(e)}")
+                QMessageBox.critical(self, "Error", f"Failed to create CM: {str(e)}")
 
         # Buttons
-        button_frame = ttk.Frame(dialog)
+        button_frame = QWidget(dialog)
         button_frame.grid(row=row, column=0, columnspan=3, pady=20)
         
-        ttk.Button(button_frame, text="Create CM", command=validate_and_save_cm).pack(side='left', padx=5)
-        ttk.Button(button_frame, text="Cancel", command=dialog.destroy).pack(side='left', padx=5)
+        QPushButton(button_frame, text="Create CM", command=validate_and_save_cm).pack(side='left', padx=5)
+        QPushButton(button_frame, text="Cancel", command=dialog.destroy).pack(side='left', padx=5)
         
     
     
@@ -12984,7 +12994,7 @@ class AITCMMSSystem:
         """Edit existing Corrective Maintenance with full functionality"""
         selected = self.cm_tree.selection()
         if not selected:
-            messagebox.showwarning("Warning", "Please select a CM to edit")
+            QMessageBox.warning(self, "Warning", "Please select a CM to edit")
             return
 
         # Get selected CM data
@@ -13002,7 +13012,7 @@ class AITCMMSSystem:
 
         cm_data = cursor.fetchone()
         if not cm_data:
-            messagebox.showerror("Error", "CM not found in database")
+            QMessageBox.critical(self, "Error", "CM not found in database")
             return
 
         # Extract CM data
@@ -13011,16 +13021,16 @@ class AITCMMSSystem:
         orig_root_cause, orig_corrective_action) = cm_data
 
         # Create edit dialog
-        dialog = tk.Toplevel(self.root)
-        dialog.title(f"Edit Corrective Maintenance - {cm_number}")
+        dialog = QDialog(self.root)
+        dialog.setWindowTitle(f"Edit Corrective Maintenance - {cm_number}")
         dialog.geometry("700x600")
-        dialog.transient(self.root)
+        dialog.setParent(self.root)
         dialog.grab_set()
 
         # Main container with scrollbar
         main_canvas = tk.Canvas(dialog)
-        scrollbar = ttk.Scrollbar(dialog, orient="vertical", command=main_canvas.yview)
-        scrollable_frame = ttk.Frame(main_canvas)
+        scrollbar = QScrollArea(dialog, orient="vertical", command=main_canvas.yview)
+        scrollable_frame = QWidget(main_canvas)
 
         scrollable_frame.bind(
             "<Configure>",
@@ -13031,20 +13041,20 @@ class AITCMMSSystem:
         main_canvas.configure(yscrollcommand=scrollbar.set)
 
         # CM Information (header)
-        header_frame = ttk.LabelFrame(scrollable_frame, text="CM Information", padding=10)
+        header_frame = QLabelFrame(scrollable_frame, text="CM Information", padding=10)
         header_frame.pack(fill='x', padx=10, pady=5)
 
         row = 0
 
         # CM Number (read-only)
-        ttk.Label(header_frame, text="CM Number:").grid(row=row, column=0, sticky='w', padx=5, pady=5)
-        ttk.Label(header_frame, text=orig_cm_number, font=('Arial', 10, 'bold')).grid(row=row, column=1, sticky='w', padx=5, pady=5)
+        QLabel(header_frame, text="CM Number:").grid(row=row, column=0, sticky='w', padx=5, pady=5)
+        QLabel(header_frame, text=orig_cm_number, font=('Arial', 10, 'bold')).grid(row=row, column=1, sticky='w', padx=5, pady=5)
         row += 1
 
         # Equipment (editable)
-        ttk.Label(header_frame, text="BFM Equipment No:").grid(row=row, column=0, sticky='w', padx=5, pady=5)
+        QLabel(header_frame, text="BFM Equipment No:").grid(row=row, column=0, sticky='w', padx=5, pady=5)
         bfm_var = tk.StringVar(value=orig_bfm_no or '')
-        bfm_combo = ttk.Combobox(header_frame, textvariable=bfm_var, width=25)
+        bfm_combo = QComboBox(header_frame, textvariable=bfm_var, width=25)
         bfm_combo.grid(row=row, column=1, sticky='w', padx=5, pady=5)
 
         # Populate equipment list
@@ -13054,76 +13064,76 @@ class AITCMMSSystem:
         row += 1
 
         # Priority (editable)
-        ttk.Label(header_frame, text="Priority:").grid(row=row, column=0, sticky='w', padx=5, pady=5)
+        QLabel(header_frame, text="Priority:").grid(row=row, column=0, sticky='w', padx=5, pady=5)
         priority_var = tk.StringVar(value=orig_priority or 'Medium')
-        priority_combo = ttk.Combobox(header_frame, textvariable=priority_var, 
+        priority_combo = QComboBox(header_frame, textvariable=priority_var, 
                                 values=['Low', 'Medium', 'High', 'Emergency'], width=15)
         priority_combo.grid(row=row, column=1, sticky='w', padx=5, pady=5)
         row += 1
 
         # Assigned Technician (editable)
-        ttk.Label(header_frame, text="Assigned Technician:").grid(row=row, column=0, sticky='w', padx=5, pady=5)
+        QLabel(header_frame, text="Assigned Technician:").grid(row=row, column=0, sticky='w', padx=5, pady=5)
         assigned_var = tk.StringVar(value=orig_assigned or '')
-        assigned_combo = ttk.Combobox(header_frame, textvariable=assigned_var, 
+        assigned_combo = QComboBox(header_frame, textvariable=assigned_var, 
                                 values=self.technicians, width=20)
         assigned_combo.grid(row=row, column=1, sticky='w', padx=5, pady=5)
         row += 1
 
         # Status (editable)
-        ttk.Label(header_frame, text="Status:").grid(row=row, column=0, sticky='w', padx=5, pady=5)
+        QLabel(header_frame, text="Status:").grid(row=row, column=0, sticky='w', padx=5, pady=5)
         status_var = tk.StringVar(value=orig_status or 'Open')
-        status_combo = ttk.Combobox(header_frame, textvariable=status_var, 
+        status_combo = QComboBox(header_frame, textvariable=status_var, 
                               values=['Open', 'Closed'], width=15)
         status_combo.grid(row=row, column=1, sticky='w', padx=5, pady=5)
         row += 1
 
         # Description (editable)
-        desc_frame = ttk.LabelFrame(scrollable_frame, text="Description", padding=10)
+        desc_frame = QLabelFrame(scrollable_frame, text="Description", padding=10)
         desc_frame.pack(fill='x', padx=10, pady=5)
 
-        description_text = tk.Text(desc_frame, width=60, height=4)
+        description_text = QTextEdit(desc_frame, width=60, height=4)
         description_text.pack(fill='x', padx=5, pady=5)
         description_text.insert('1.0', orig_description or '')
 
         # Completion Information (if completed)
-        completion_frame = ttk.LabelFrame(scrollable_frame, text="Completion Information", padding=10)
+        completion_frame = QLabelFrame(scrollable_frame, text="Completion Information", padding=10)
         completion_frame.pack(fill='x', padx=10, pady=5)
 
         comp_row = 0
 
         # Labor Hours
-        ttk.Label(completion_frame, text="Labor Hours:").grid(row=comp_row, column=0, sticky='w', padx=5, pady=5)
+        QLabel(completion_frame, text="Labor Hours:").grid(row=comp_row, column=0, sticky='w', padx=5, pady=5)
         labor_hours_var = tk.StringVar(value=str(orig_hours or ''))
-        ttk.Entry(completion_frame, textvariable=labor_hours_var, width=10).grid(row=comp_row, column=1, sticky='w', padx=5, pady=5)
+        QLineEdit(completion_frame, textvariable=labor_hours_var, width=10).grid(row=comp_row, column=1, sticky='w', padx=5, pady=5)
         comp_row += 1
 
         # Completion Date
-        ttk.Label(completion_frame, text="Completion Date:").grid(row=comp_row, column=0, sticky='w', padx=5, pady=5)
+        QLabel(completion_frame, text="Completion Date:").grid(row=comp_row, column=0, sticky='w', padx=5, pady=5)
         completion_date_var = tk.StringVar(value=orig_completion or '')
-        ttk.Entry(completion_frame, textvariable=completion_date_var, width=15).grid(row=comp_row, column=1, sticky='w', padx=5, pady=5)
+        QLineEdit(completion_frame, textvariable=completion_date_var, width=15).grid(row=comp_row, column=1, sticky='w', padx=5, pady=5)
         comp_row += 1
 
         # Notes
-        notes_frame = ttk.LabelFrame(scrollable_frame, text="Notes", padding=10)
+        notes_frame = QLabelFrame(scrollable_frame, text="Notes", padding=10)
         notes_frame.pack(fill='x', padx=10, pady=5)
 
-        notes_text = tk.Text(notes_frame, width=60, height=4)
+        notes_text = QTextEdit(notes_frame, width=60, height=4)
         notes_text.pack(fill='x', padx=5, pady=5)
         notes_text.insert('1.0', orig_notes or '')
 
         # Root Cause
-        root_cause_frame = ttk.LabelFrame(scrollable_frame, text="Root Cause Analysis", padding=10)
+        root_cause_frame = QLabelFrame(scrollable_frame, text="Root Cause Analysis", padding=10)
         root_cause_frame.pack(fill='x', padx=10, pady=5)
 
-        root_cause_text = tk.Text(root_cause_frame, width=60, height=3)
+        root_cause_text = QTextEdit(root_cause_frame, width=60, height=3)
         root_cause_text.pack(fill='x', padx=5, pady=5)
         root_cause_text.insert('1.0', orig_root_cause or '')
 
         # Corrective Action
-        corrective_action_frame = ttk.LabelFrame(scrollable_frame, text="Corrective Action", padding=10)
+        corrective_action_frame = QLabelFrame(scrollable_frame, text="Corrective Action", padding=10)
         corrective_action_frame.pack(fill='x', padx=10, pady=5)
 
-        corrective_action_text = tk.Text(corrective_action_frame, width=60, height=3)
+        corrective_action_text = QTextEdit(corrective_action_frame, width=60, height=3)
         corrective_action_text.pack(fill='x', padx=5, pady=5)
         corrective_action_text.insert('1.0', orig_corrective_action or '')
 
@@ -13131,7 +13141,7 @@ class AITCMMSSystem:
             try:
                 # Validate inputs
                 if not description_text.get('1.0', 'end-1c').strip():
-                    messagebox.showerror("Error", "Please enter a description")
+                    QMessageBox.critical(self, "Error", "Please enter a description")
                     return
 
                 # Update database
@@ -13164,8 +13174,8 @@ class AITCMMSSystem:
                 ))
 
                 self.conn.commit()
-                messagebox.showinfo("Success", f"CM {orig_cm_number} updated successfully!")
-                dialog.destroy()
+                QMessageBox.information(self, "Success", f"CM {orig_cm_number} updated successfully!")
+                dialog.close()
                 self.load_corrective_maintenance()
 
             except Exception as e:
@@ -13173,10 +13183,10 @@ class AITCMMSSystem:
                     self.conn.rollback()
                 except Exception:
                     pass
-                messagebox.showerror("Error", f"Failed to update CM: {str(e)}")
+                QMessageBox.critical(self, "Error", f"Failed to update CM: {str(e)}")
 
         def delete_cm():
-            result = messagebox.askyesno("Confirm Delete", 
+            result = QMessageBox.question(self, "Confirm Delete", 
                                     f"Delete CM {orig_cm_number}?\n\n"
                                     f"This action cannot be undone.")
             if result:
@@ -13187,8 +13197,8 @@ class AITCMMSSystem:
                     # Then delete the CM itself
                     cursor.execute('DELETE FROM corrective_maintenance WHERE cm_number = %s', (orig_cm_number,))
                     self.conn.commit()
-                    messagebox.showinfo("Success", f"CM {orig_cm_number} deleted successfully!")
-                    dialog.destroy()
+                    QMessageBox.information(self, "Success", f"CM {orig_cm_number} deleted successfully!")
+                    dialog.close()
                     self.load_corrective_maintenance()
                 except Exception as e:
                     # Roll back so the connection is not left in an aborted state
@@ -13196,14 +13206,14 @@ class AITCMMSSystem:
                         self.conn.rollback()
                     except Exception:
                         pass
-                    messagebox.showerror("Error", f"Failed to delete CM: {str(e)}")
+                    QMessageBox.critical(self, "Error", f"Failed to delete CM: {str(e)}")
 
         # Buttons frame
-        button_frame = ttk.Frame(scrollable_frame)
+        button_frame = QWidget(scrollable_frame)
         button_frame.pack(side='bottom', fill='x', padx=10, pady=10)
 
-        ttk.Button(button_frame, text="Save Changes", command=save_changes).pack(side='left', padx=5)
-        ttk.Button(button_frame, text="Delete CM", command=delete_cm).pack(side='left', padx=5)
+        QPushButton(button_frame, text="Save Changes", command=save_changes).pack(side='left', padx=5)
+        QPushButton(button_frame, text="Delete CM", command=delete_cm).pack(side='left', padx=5)
         
         # ============ ADD THIS NEW SECTION ============
         # View Parts button - shows parts consumed for this CM
@@ -13220,11 +13230,11 @@ class AITCMMSSystem:
             def show_parts_detail():
                 self.parts_integration.show_cm_parts_details(orig_cm_number)
             
-            ttk.Button(button_frame, text=button_text, 
+            QPushButton(button_frame, text=button_text, 
                       command=show_parts_detail).pack(side='left', padx=5)
         # ============ END NEW SECTION ============
         
-        ttk.Button(button_frame, text="Cancel", command=dialog.destroy).pack(side='right', padx=5)
+        QPushButton(button_frame, text="Cancel", command=dialog.destroy).pack(side='right', padx=5)
 
         # Pack the canvas and scrollbar
         main_canvas.pack(side="left", fill="both", expand=True)
@@ -13240,7 +13250,7 @@ class AITCMMSSystem:
         """Complete selected CM with parts consumption tracking"""
         selected = self.cm_tree.selection()
         if not selected:
-            messagebox.showwarning("Warning", "Please select a CM to complete")
+            QMessageBox.warning(self, "Warning", "Please select a CM to complete")
             return
 
         # Get selected CM data
@@ -13258,7 +13268,7 @@ class AITCMMSSystem:
     
         cm_data = cursor.fetchone()
         if not cm_data:
-            messagebox.showerror("Error", "CM not found")
+            QMessageBox.critical(self, "Error", "CM not found")
             return
     
         (cm_num, equipment, desc, tech, status, labor_hrs, 
@@ -13266,31 +13276,31 @@ class AITCMMSSystem:
     
         # Check if already closed
         if status in ['Closed', 'Completed']:
-            messagebox.showinfo("Info", f"CM {cm_number} is already closed")
+            QMessageBox.information(self, "Info", f"CM {cm_number} is already closed")
             return
     
         # Create closure dialog
-        dialog = tk.Toplevel(self.root)
-        dialog.title(f"Complete CM - {cm_number}")
+        dialog = QDialog(self.root)
+        dialog.setWindowTitle(f"Complete CM - {cm_number}")
         dialog.geometry("950x750")
-        dialog.transient(self.root)
+        dialog.setParent(self.root)
         dialog.grab_set()
     
         # Header
-        header_frame = ttk.Frame(dialog)
+        header_frame = QWidget(dialog)
         header_frame.pack(fill='x', padx=10, pady=10)
     
-        ttk.Label(header_frame, text=f"Complete Corrective Maintenance", 
+        QLabel(header_frame, text=f"Complete Corrective Maintenance", 
                 font=('Arial', 12, 'bold')).pack()
-        ttk.Label(header_frame, text=f"CM Number: {cm_number}", 
+        QLabel(header_frame, text=f"CM Number: {cm_number}", 
                 font=('Arial', 10)).pack()
-        ttk.Label(header_frame, text=f"Equipment: {equipment}", 
+        QLabel(header_frame, text=f"Equipment: {equipment}", 
                 font=('Arial', 10)).pack()
     
         # Main form frame with scrollbar
         canvas = tk.Canvas(dialog)
-        scrollbar = ttk.Scrollbar(dialog, orient="vertical", command=canvas.yview)
-        scrollable_frame = ttk.Frame(canvas)
+        scrollbar = QScrollArea(dialog, orient="vertical", command=canvas.yview)
+        scrollable_frame = QWidget(canvas)
     
         scrollable_frame.bind(
             "<Configure>",
@@ -13307,81 +13317,81 @@ class AITCMMSSystem:
         row = 0
     
         # Completion Date
-        ttk.Label(scrollable_frame, text="Completion Date*:", 
+        QLabel(scrollable_frame, text="Completion Date*:", 
                 font=('Arial', 10, 'bold')).grid(row=row, column=0, sticky='w', padx=10, pady=5)
         completion_date_var = tk.StringVar(value=datetime.now().strftime('%Y-%m-%d'))
-        ttk.Entry(scrollable_frame, textvariable=completion_date_var, width=40).grid(
+        QLineEdit(scrollable_frame, textvariable=completion_date_var, width=40).grid(
             row=row, column=1, sticky='w', padx=10, pady=5)
-        ttk.Label(scrollable_frame, text="(Format: YYYY-MM-DD)", 
+        QLabel(scrollable_frame, text="(Format: YYYY-MM-DD)", 
                 font=('Arial', 8, 'italic')).grid(row=row, column=2, sticky='w')
         row += 1
     
         # Labor Hours
-        ttk.Label(scrollable_frame, text="Total Labor Hours*:", 
+        QLabel(scrollable_frame, text="Total Labor Hours*:", 
                 font=('Arial', 10, 'bold')).grid(row=row, column=0, sticky='w', padx=10, pady=5)
         labor_hours_var = tk.StringVar(value=str(labor_hrs) if labor_hrs else '')
-        ttk.Entry(scrollable_frame, textvariable=labor_hours_var, width=40).grid(
+        QLineEdit(scrollable_frame, textvariable=labor_hours_var, width=40).grid(
             row=row, column=1, sticky='w', padx=10, pady=5)
         row += 1
     
-        ttk.Separator(scrollable_frame, orient='horizontal').grid(
+        QFrame(scrollable_frame, orient='horizontal').grid(
             row=row, column=0, columnspan=3, sticky='ew', pady=10)
         row += 1
     
         # Root Cause
-        ttk.Label(scrollable_frame, text="Root Cause*:", 
+        QLabel(scrollable_frame, text="Root Cause*:", 
                 font=('Arial', 10, 'bold')).grid(row=row, column=0, sticky='nw', padx=10, pady=5)
-        root_cause_text = tk.Text(scrollable_frame, width=50, height=4)
+        root_cause_text = QTextEdit(scrollable_frame, width=50, height=4)
         root_cause_text.insert('1.0', root_cause or '')
         root_cause_text.grid(row=row, column=1, sticky='w', padx=10, pady=5)
         row += 1
     
         # Corrective Action
-        ttk.Label(scrollable_frame, text="Corrective Action Taken*:", 
+        QLabel(scrollable_frame, text="Corrective Action Taken*:", 
                 font=('Arial', 10, 'bold')).grid(row=row, column=0, sticky='nw', padx=10, pady=5)
-        corr_action_text = tk.Text(scrollable_frame, width=50, height=4)
+        corr_action_text = QTextEdit(scrollable_frame, width=50, height=4)
         corr_action_text.insert('1.0', corr_action or '')
         corr_action_text.grid(row=row, column=1, sticky='w', padx=10, pady=5)
         row += 1
     
         # Additional Notes
-        ttk.Label(scrollable_frame, text="Additional Notes:", 
+        QLabel(scrollable_frame, text="Additional Notes:", 
                 font=('Arial', 10, 'bold')).grid(row=row, column=0, sticky='nw', padx=10, pady=5)
-        notes_text = tk.Text(scrollable_frame, width=50, height=4)
+        notes_text = QTextEdit(scrollable_frame, width=50, height=4)
         notes_text.insert('1.0', notes or '')
         notes_text.grid(row=row, column=1, sticky='w', padx=10, pady=5)
         row += 1
     
-        ttk.Separator(scrollable_frame, orient='horizontal').grid(
+        QFrame(scrollable_frame, orient='horizontal').grid(
             row=row, column=0, columnspan=3, sticky='ew', pady=10)
         row += 1
     
         # Parts consumption question - THIS IS THE KEY INTEGRATION POINT
-        ttk.Label(scrollable_frame, text="Were any parts used from MRO Stock?", 
+        QLabel(scrollable_frame, text="Were any parts used from MRO Stock?", 
                 font=('Arial', 11, 'bold'), foreground='blue').grid(
                     row=row, column=0, columnspan=2, sticky='w', padx=10, pady=10)
         row += 1
     
         parts_used_var = tk.StringVar(value="No")
-        ttk.Radiobutton(scrollable_frame, text="No parts were used", 
+        QRadioButton(scrollable_frame, text="No parts were used", 
                     variable=parts_used_var, value="No").grid(
                         row=row, column=0, columnspan=2, sticky='w', padx=30, pady=5)
         row += 1
     
-        ttk.Radiobutton(scrollable_frame, text="Yes, parts were used (will open parts dialog)",
+        QRadioButton(scrollable_frame, text="Yes, parts were used (will open parts dialog)",
                     variable=parts_used_var, value="Yes").grid(
                         row=row, column=0, columnspan=2, sticky='w', padx=30, pady=5)
         row += 1
 
         # Button frame
-        button_frame = ttk.Frame(dialog)
+        button_frame = QWidget(dialog)
         button_frame.pack(fill='x', padx=10, pady=10)
 
         def gather_form_values():
             """Validate required fields and return a dict of form values, or None if invalid"""
             # Validate required fields
             if not completion_date_var.get().strip():
-                messagebox.showerror("Error", "Completion date is required")
+                QMessageBox.critical(self, "Error", "Completion date is required")
                 return None
             # Accept multiple common date formats and normalize to YYYY-MM-DD
             date_input = completion_date_var.get().strip()
@@ -13393,26 +13403,26 @@ class AITCMMSSystem:
                 except ValueError:
                     continue
             if not parsed_date:
-                messagebox.showerror("Error", "Invalid date. Use YYYY-MM-DD or MM/DD/YY.")
+                QMessageBox.critical(self, "Error", "Invalid date. Use YYYY-MM-DD or MM/DD/YY.")
                 return None
             if not labor_hours_var.get().strip():
-                messagebox.showerror("Error", "Labor hours is required")
+                QMessageBox.critical(self, "Error", "Labor hours is required")
                 return None
             try:
                 labor_hrs_value = float(labor_hours_var.get())
                 if labor_hrs_value < 0:
-                    messagebox.showerror("Error", "Labor hours cannot be negative")
+                    QMessageBox.critical(self, "Error", "Labor hours cannot be negative")
                     return None
             except ValueError:
-                messagebox.showerror("Error", "Invalid labor hours value")
+                QMessageBox.critical(self, "Error", "Invalid labor hours value")
                 return None
             root_cause_value = root_cause_text.get('1.0', 'end-1c').strip()
             if not root_cause_value:
-                messagebox.showerror("Error", "Root cause is required")
+                QMessageBox.critical(self, "Error", "Root cause is required")
                 return None
             corr_action_value = corr_action_text.get('1.0', 'end-1c').strip()
             if not corr_action_value:
-                messagebox.showerror("Error", "Corrective action is required")
+                QMessageBox.critical(self, "Error", "Corrective action is required")
                 return None
             additional_notes = notes_text.get('1.0', 'end-1c').strip()
             return {
@@ -13453,18 +13463,18 @@ class AITCMMSSystem:
 
                 self.conn.commit()
 
-                messagebox.showinfo("Success",
+                QMessageBox.information(self, "Success",
                     f"CM {cm_number} completed successfully!\n\n"
                     f"Completion Date: {form_values['completion_date']}\n"
                     f"Labor Hours: {form_values['labor_hours']}\n"
                     f"Status: Closed")
 
-                dialog.destroy()
+                dialog.close()
                 self.load_corrective_maintenance()
 
             except Exception as e:
                 self.conn.rollback()
-                messagebox.showerror("Error", f"Failed to complete CM: {str(e)}")
+                QMessageBox.critical(self, "Error", f"Failed to complete CM: {str(e)}")
 
         def validate_and_proceed():
             """Validate closure form and proceed to parts or close"""
@@ -13475,7 +13485,7 @@ class AITCMMSSystem:
             # Check if parts were used
             if parts_used_var.get() == "Yes":
                 # Close this dialog and open parts consumption dialog
-                dialog.destroy()
+                dialog.close()
             
                 # Open parts consumption dialog
                 # This requires the CMPartsIntegration module to be initialized
@@ -13486,7 +13496,7 @@ class AITCMMSSystem:
                         callback=lambda success: finalize_closure(form_values, success)
                     )
                 else:
-                    messagebox.showerror("Error", 
+                    QMessageBox.critical(self, "Error", 
                         "Parts integration module not initialized.\n"
                         "Please contact system administrator.")
                     # Still update CM but without parts
@@ -13495,9 +13505,9 @@ class AITCMMSSystem:
                 # No parts used, close directly
                 finalize_closure(form_values, True)
     
-        ttk.Button(button_frame, text="Complete CM", 
+        QPushButton(button_frame, text="Complete CM", 
                 command=validate_and_proceed).pack(side='left', padx=5)
-        ttk.Button(button_frame, text="Cancel", 
+        QPushButton(button_frame, text="Cancel", 
                 command=dialog.destroy).pack(side='left', padx=5)
     
  
@@ -13639,30 +13649,30 @@ class AITCMMSSystem:
         """Show comprehensive equipment analytics in a new dialog window"""
         try:
             # Create analytics dialog
-            analytics_dialog = tk.Toplevel(self.root)
-            analytics_dialog.title("Equipment Analytics Dashboard")
+            analytics_dialog = QDialog(self.root)
+            analytics_dialog.setWindowTitle("Equipment Analytics Dashboard")
             analytics_dialog.geometry("1200x800")
-            analytics_dialog.transient(self.root)
+            analytics_dialog.setParent(self.root)
             analytics_dialog.grab_set()
         
             # Create notebook for different analytics tabs
-            analytics_notebook = ttk.Notebook(analytics_dialog)
+            analytics_notebook = QTabWidget(analytics_dialog)
             analytics_notebook.pack(fill='both', expand=True, padx=10, pady=10)
         
             # Tab 1: Equipment Overview
-            overview_frame = ttk.Frame(analytics_notebook)
+            overview_frame = QWidget(analytics_notebook)
             analytics_notebook.add(overview_frame, text="Equipment Overview")
         
             # Tab 2: PM Performance Analysis
-            pm_performance_frame = ttk.Frame(analytics_notebook)
+            pm_performance_frame = QWidget(analytics_notebook)
             analytics_notebook.add(pm_performance_frame, text="PM Performance")
         
             # Tab 3: Location Analysis
-            location_frame = ttk.Frame(analytics_notebook)
+            location_frame = QWidget(analytics_notebook)
             analytics_notebook.add(location_frame, text="Location Analysis")
         
             # Tab 4: Technician Workload
-            technician_frame = ttk.Frame(analytics_notebook)
+            technician_frame = QWidget(analytics_notebook)
             analytics_notebook.add(technician_frame, text="Technician Analysis")
         
             # Generate analytics for each tab
@@ -13672,16 +13682,16 @@ class AITCMMSSystem:
             self.generate_technician_analysis(technician_frame)
         
             # Add export button
-            export_frame = ttk.Frame(analytics_dialog)
+            export_frame = QWidget(analytics_dialog)
             export_frame.pack(side='bottom', fill='x', padx=10, pady=5)
         
-            ttk.Button(export_frame, text="Export All Analytics to PDF", 
+            QPushButton(export_frame, text="Export All Analytics to PDF", 
                     command=lambda: self.export_equipment_analytics_pdf(analytics_dialog)).pack(side='right', padx=5)
-            ttk.Button(export_frame, text="Close", 
+            QPushButton(export_frame, text="Close", 
                     command=analytics_dialog.destroy).pack(side='right', padx=5)
         
         except Exception as e:
-            messagebox.showerror("Error", f"Failed to generate equipment analytics: {str(e)}")
+            QMessageBox.critical(self, "Error", f"Failed to generate equipment analytics: {str(e)}")
 
     def generate_equipment_overview(self, parent_frame):
         """Generate equipment overview analytics"""
@@ -13689,11 +13699,11 @@ class AITCMMSSystem:
             cursor = self.conn.cursor()
         
             # Create scrollable text area
-            text_frame = ttk.Frame(parent_frame)
+            text_frame = QWidget(parent_frame)
             text_frame.pack(fill='both', expand=True, padx=10, pady=10)
         
-            overview_text = tk.Text(text_frame, wrap='word', font=('Courier', 10))
-            scrollbar = ttk.Scrollbar(text_frame, orient='vertical', command=overview_text.yview)
+            overview_text = QTextEdit(text_frame, wrap='word', font=('Courier', 10))
+            scrollbar = QScrollArea(text_frame, orient='vertical', command=overview_text.yview)
             overview_text.configure(yscrollcommand=scrollbar.set)
         
             overview_text.pack(side='left', fill='both', expand=True)
@@ -13830,11 +13840,11 @@ class AITCMMSSystem:
         try:
             cursor = self.conn.cursor()
             
-            text_frame = ttk.Frame(parent_frame)
+            text_frame = QWidget(parent_frame)
             text_frame.pack(fill='both', expand=True, padx=10, pady=10)
         
-            pm_text = tk.Text(text_frame, wrap='word', font=('Courier', 10))
-            scrollbar = ttk.Scrollbar(text_frame, orient='vertical', command=pm_text.yview)
+            pm_text = QTextEdit(text_frame, wrap='word', font=('Courier', 10))
+            scrollbar = QScrollArea(text_frame, orient='vertical', command=pm_text.yview)
             pm_text.configure(yscrollcommand=scrollbar.set)
         
             pm_text.pack(side='left', fill='both', expand=True)
@@ -13961,11 +13971,11 @@ class AITCMMSSystem:
         try:
             cursor = self.conn.cursor()
         
-            text_frame = ttk.Frame(parent_frame)
+            text_frame = QWidget(parent_frame)
             text_frame.pack(fill='both', expand=True, padx=10, pady=10)
         
-            location_text = tk.Text(text_frame, wrap='word', font=('Courier', 10))
-            scrollbar = ttk.Scrollbar(text_frame, orient='vertical', command=location_text.yview)
+            location_text = QTextEdit(text_frame, wrap='word', font=('Courier', 10))
+            scrollbar = QScrollArea(text_frame, orient='vertical', command=location_text.yview)
             location_text.configure(yscrollcommand=scrollbar.set)
         
             location_text.pack(side='left', fill='both', expand=True)
@@ -14088,11 +14098,11 @@ class AITCMMSSystem:
         try:
             cursor = self.conn.cursor()
         
-            text_frame = ttk.Frame(parent_frame)
+            text_frame = QWidget(parent_frame)
             text_frame.pack(fill='both', expand=True, padx=10, pady=10)
         
-            tech_text = tk.Text(text_frame, wrap='word', font=('Courier', 10))
-            scrollbar = ttk.Scrollbar(text_frame, orient='vertical', command=tech_text.yview)
+            tech_text = QTextEdit(text_frame, wrap='word', font=('Courier', 10))
+            scrollbar = QScrollArea(text_frame, orient='vertical', command=tech_text.yview)
             tech_text.configure(yscrollcommand=scrollbar.set)
         
             tech_text.pack(side='left', fill='both', expand=True)
@@ -14339,11 +14349,11 @@ class AITCMMSSystem:
             # Build PDF
             doc.build(story)
         
-            messagebox.showinfo("Success", f"Analytics report exported to: {filename}")
+            QMessageBox.information(self, "Success", f"Analytics report exported to: {filename}")
             self.update_status(f"Equipment analytics exported to {filename}")
         
         except Exception as e:
-            messagebox.showerror("Error", f"Failed to export analytics: {str(e)}")
+            QMessageBox.critical(self, "Error", f"Failed to export analytics: {str(e)}")
 
     def get_equipment_overview_text(self):
         """Get equipment overview text for PDF export"""
@@ -14442,30 +14452,30 @@ class AITCMMSSystem:
         """Comprehensive PM trends analysis with visualizations and insights"""
         try:
             # Create trends analysis dialog
-            trends_dialog = tk.Toplevel(self.root)
-            trends_dialog.title("PM Trends Analysis Dashboard")
+            trends_dialog = QDialog(self.root)
+            trends_dialog.setWindowTitle("PM Trends Analysis Dashboard")
             trends_dialog.geometry("1400x900")
-            trends_dialog.transient(self.root)
+            trends_dialog.setParent(self.root)
             trends_dialog.grab_set()
 
             # Create notebook for different trend views
-            trends_notebook = ttk.Notebook(trends_dialog)
+            trends_notebook = QTabWidget(trends_dialog)
             trends_notebook.pack(fill='both', expand=True, padx=10, pady=10)
 
             # Tab 1: Monthly Completion Trends
-            monthly_frame = ttk.Frame(trends_notebook)
+            monthly_frame = QWidget(trends_notebook)
             trends_notebook.add(monthly_frame, text="Monthly Trends")
 
             # Tab 2: Equipment Performance Trends
-            equipment_frame = ttk.Frame(trends_notebook)
+            equipment_frame = QWidget(trends_notebook)
             trends_notebook.add(equipment_frame, text="Equipment Trends")
 
             # Tab 3: Technician Performance Trends
-            technician_frame = ttk.Frame(trends_notebook)
+            technician_frame = QWidget(trends_notebook)
             trends_notebook.add(technician_frame, text="Technician Trends")
 
             # Tab 4: PM Type Distribution Trends
-            pm_type_frame = ttk.Frame(trends_notebook)
+            pm_type_frame = QWidget(trends_notebook)
             trends_notebook.add(pm_type_frame, text="PM Type Trends")
 
             # Generate content for each tab
@@ -14475,18 +14485,18 @@ class AITCMMSSystem:
             self.generate_pm_type_trends_analysis(pm_type_frame)
 
             # Add export and close buttons
-            button_frame = ttk.Frame(trends_dialog)
+            button_frame = QWidget(trends_dialog)
             button_frame.pack(side='bottom', fill='x', padx=10, pady=5)
 
-            ttk.Button(button_frame, text="Export Trends to PDF", 
+            QPushButton(button_frame, text="Export Trends to PDF", 
                     command=lambda: self.export_trends_analysis_pdf(trends_dialog)).pack(side='left', padx=5)
-            ttk.Button(button_frame, text="Refresh Analysis", 
+            QPushButton(button_frame, text="Refresh Analysis", 
                     command=lambda: self.refresh_trends_analysis(trends_dialog)).pack(side='left', padx=5)
-            ttk.Button(button_frame, text="Close", 
+            QPushButton(button_frame, text="Close", 
                     command=trends_dialog.destroy).pack(side='right', padx=5)
     
         except Exception as e:
-            messagebox.showerror("Error", f"Failed to generate PM trends analysis: {str(e)}")
+            QMessageBox.critical(self, "Error", f"Failed to generate PM trends analysis: {str(e)}")
 
     def generate_monthly_trends_analysis(self, parent_frame):
         """Generate monthly PM completion trends analysis"""
@@ -14495,8 +14505,8 @@ class AITCMMSSystem:
 
             # Create scrollable frame
             canvas = tk.Canvas(parent_frame)
-            scrollbar = ttk.Scrollbar(parent_frame, orient="vertical", command=canvas.yview)
-            scrollable_frame = ttk.Frame(canvas)
+            scrollbar = QScrollArea(parent_frame, orient="vertical", command=canvas.yview)
+            scrollable_frame = QWidget(canvas)
 
             scrollable_frame.bind(
                 "<Configure>",
@@ -14526,8 +14536,8 @@ class AITCMMSSystem:
             monthly_data = cursor.fetchall()
 
             # Create text display for trends
-            trends_text = tk.Text(scrollable_frame, wrap='word', font=('Courier', 10), height=40)
-            text_scrollbar = ttk.Scrollbar(scrollable_frame, orient='vertical', command=trends_text.yview)
+            trends_text = QTextEdit(scrollable_frame, wrap='word', font=('Courier', 10), height=40)
+            text_scrollbar = QScrollArea(scrollable_frame, orient='vertical', command=trends_text.yview)
             trends_text.configure(yscrollcommand=text_scrollbar.set)
 
             # Generate trends report
@@ -14660,7 +14670,7 @@ class AITCMMSSystem:
             scrollbar.pack(side="right", fill="y")
 
         except Exception as e:
-            error_label = ttk.Label(parent_frame, text=f"Error generating monthly trends: {str(e)}")
+            error_label = QLabel(parent_frame, text=f"Error generating monthly trends: {str(e)}")
             error_label.pack(pady=20)
 
     def generate_equipment_trends_analysis(self, parent_frame):
@@ -14669,8 +14679,8 @@ class AITCMMSSystem:
             cursor = self.conn.cursor()
 
             # Create text widget for equipment trends
-            equipment_text = tk.Text(parent_frame, wrap='word', font=('Courier', 10))
-            scrollbar = ttk.Scrollbar(parent_frame, orient='vertical', command=equipment_text.yview)
+            equipment_text = QTextEdit(parent_frame, wrap='word', font=('Courier', 10))
+            scrollbar = QScrollArea(parent_frame, orient='vertical', command=equipment_text.yview)
             equipment_text.configure(yscrollcommand=scrollbar.set)
 
             report = "EQUIPMENT PM TRENDS ANALYSIS\n"
@@ -14804,7 +14814,7 @@ class AITCMMSSystem:
             scrollbar.pack(side='right', fill='y')
 
         except Exception as e:
-            error_label = ttk.Label(parent_frame, text=f"Error generating equipment trends: {str(e)}")
+            error_label = QLabel(parent_frame, text=f"Error generating equipment trends: {str(e)}")
             error_label.pack(pady=20)
 
     def generate_technician_trends_analysis(self, parent_frame):
@@ -14813,8 +14823,8 @@ class AITCMMSSystem:
             cursor = self.conn.cursor()
 
             # Create text widget for technician trends
-            tech_text = tk.Text(parent_frame, wrap='word', font=('Courier', 10))
-            scrollbar = ttk.Scrollbar(parent_frame, orient='vertical', command=tech_text.yview)
+            tech_text = QTextEdit(parent_frame, wrap='word', font=('Courier', 10))
+            scrollbar = QScrollArea(parent_frame, orient='vertical', command=tech_text.yview)
             tech_text.configure(yscrollcommand=scrollbar.set)
 
             report = "TECHNICIAN PERFORMANCE TRENDS\n"
@@ -14941,7 +14951,7 @@ class AITCMMSSystem:
             scrollbar.pack(side='right', fill='y')
 
         except Exception as e:
-            error_label = ttk.Label(parent_frame, text=f"Error generating technician trends: {str(e)}")
+            error_label = QLabel(parent_frame, text=f"Error generating technician trends: {str(e)}")
             error_label.pack(pady=20)
 
     def generate_pm_type_trends_analysis(self, parent_frame):
@@ -14950,8 +14960,8 @@ class AITCMMSSystem:
             cursor = self.conn.cursor()
 
             # Create text widget for PM type trends
-            pm_type_text = tk.Text(parent_frame, wrap='word', font=('Courier', 10))
-            scrollbar = ttk.Scrollbar(parent_frame, orient='vertical', command=pm_type_text.yview)
+            pm_type_text = QTextEdit(parent_frame, wrap='word', font=('Courier', 10))
+            scrollbar = QScrollArea(parent_frame, orient='vertical', command=pm_type_text.yview)
             pm_type_text.configure(yscrollcommand=scrollbar.set)
 
             report = "PM TYPE TRENDS ANALYSIS\n"
@@ -15166,7 +15176,7 @@ class AITCMMSSystem:
             scrollbar.pack(side='right', fill='y')
 
         except Exception as e:
-            error_label = ttk.Label(parent_frame, text=f"Error generating PM type trends: {str(e)}")
+            error_label = QLabel(parent_frame, text=f"Error generating PM type trends: {str(e)}")
             error_label.pack(pady=20)
 
     def get_season_from_month(self, month_num):
@@ -15252,21 +15262,21 @@ class AITCMMSSystem:
             # Build PDF
             doc.build(story)
 
-            messagebox.showinfo("Success", f"PM trends analysis exported to: {filename}")
+            QMessageBox.information(self, "Success", f"PM trends analysis exported to: {filename}")
             self.update_status(f"PM trends analysis exported to {filename}")
 
         except Exception as e:
-            messagebox.showerror("Error", f"Failed to export trends analysis: {str(e)}")
+            QMessageBox.critical(self, "Error", f"Failed to export trends analysis: {str(e)}")
 
     def refresh_trends_analysis(self, parent_dialog):
         """Refresh the trends analysis with current data"""
         try:
             # Destroy and recreate the dialog
-            parent_dialog.destroy()
+            parent_dialog.close()
             self.show_pm_trends()
             
         except Exception as e:
-            messagebox.showerror("Error", f"Failed to refresh trends analysis: {str(e)}")
+            QMessageBox.critical(self, "Error", f"Failed to refresh trends analysis: {str(e)}")
     
     
     
@@ -15286,16 +15296,16 @@ class AITCMMSSystem:
             with open(filename, 'w', encoding='utf-8') as f:
                 f.write(content)
             
-            messagebox.showinfo("Success", f"Analytics exported to: {filename}")
+            QMessageBox.information(self, "Success", f"Analytics exported to: {filename}")
             
         except Exception as e:
-            messagebox.showerror("Error", f"Failed to export analytics: {str(e)}")
+            QMessageBox.critical(self, "Error", f"Failed to export analytics: {str(e)}")
     
     # Replace your existing import_equipment_csv method with this enhanced version
 
     def import_equipment_csv(self):
         """Import equipment data from CSV file with PM dates"""
-        file_path = filedialog.askopenfilename(
+        file_path = QFileDialog.getOpenFileName(self, 
             title="Select Equipment CSV File",
             filetypes=[("CSV files", "*.csv"), ("All files", "*.*")]
         )
@@ -15306,7 +15316,7 @@ class AITCMMSSystem:
                 self.show_csv_mapping_dialog(file_path)
             
             except Exception as e:
-                messagebox.showerror("Error", f"Failed to import CSV file: {str(e)}")
+                QMessageBox.critical(self, "Error", f"Failed to import CSV file: {str(e)}")
 
     # Replace your show_csv_mapping_dialog method with this fixed version
 
@@ -15318,16 +15328,16 @@ class AITCMMSSystem:
             df = pd.read_csv(file_path, encoding='cp1252', nrows=5)  # Just read first 5 rows to see structure
             csv_columns = list(df.columns)
         
-            dialog = tk.Toplevel(self.root)
-            dialog.title("Map CSV Columns to Database Fields")
+            dialog = QDialog(self.root)
+            dialog.setWindowTitle("Map CSV Columns to Database Fields")
             dialog.geometry("700x600")  # Made it larger
-            dialog.transient(self.root)
+            dialog.setParent(self.root)
             dialog.grab_set()
         
             # Main container with scrollbar
             main_canvas = tk.Canvas(dialog)
-            scrollbar = ttk.Scrollbar(dialog, orient="vertical", command=main_canvas.yview)
-            scrollable_frame = ttk.Frame(main_canvas)
+            scrollbar = QScrollArea(dialog, orient="vertical", command=main_canvas.yview)
+            scrollable_frame = QWidget(main_canvas)
         
             scrollable_frame.bind(
                 "<Configure>",
@@ -15338,11 +15348,11 @@ class AITCMMSSystem:
             main_canvas.configure(yscrollcommand=scrollbar.set)
         
             # Instructions
-            ttk.Label(scrollable_frame, text="Map your CSV columns to the correct database fields:", 
+            QLabel(scrollable_frame, text="Map your CSV columns to the correct database fields:", 
                     font=('Arial', 12, 'bold')).pack(pady=10)
         
             # Create mapping frame
-            mapping_frame = ttk.Frame(scrollable_frame)
+            mapping_frame = QWidget(scrollable_frame)
             mapping_frame.pack(fill='both', expand=True, padx=20, pady=10)
         
             # Column mappings
@@ -15369,10 +15379,10 @@ class AITCMMSSystem:
         
             row = 0
             for field_name, field_key in db_fields:
-                ttk.Label(mapping_frame, text=field_name + ":").grid(row=row, column=0, sticky='w', pady=2)
+                QLabel(mapping_frame, text=field_name + ":").grid(row=row, column=0, sticky='w', pady=2)
             
                 mapping_var = tk.StringVar()
-                combo = ttk.Combobox(mapping_frame, textvariable=mapping_var, values=csv_options, width=30)
+                combo = QComboBox(mapping_frame, textvariable=mapping_var, values=csv_options, width=30)
                 combo.grid(row=row, column=1, padx=10, pady=2)
             
                 # Try to auto-match common column names
@@ -15398,10 +15408,10 @@ class AITCMMSSystem:
                 row += 1
         
             # Show sample data
-            sample_frame = ttk.LabelFrame(scrollable_frame, text="Sample Data from Your CSV", padding=10)
+            sample_frame = QLabelFrame(scrollable_frame, text="Sample Data from Your CSV", padding=10)
             sample_frame.pack(fill='x', padx=20, pady=10)
         
-            sample_text = tk.Text(sample_frame, height=6, width=80)
+            sample_text = QTextEdit(sample_frame, height=6, width=80)
             sample_text.pack()
             sample_text.insert('1.0', df.to_string())
             sample_text.config(state='disabled')
@@ -15508,7 +15518,7 @@ class AITCMMSSystem:
                             continue
                 
                     self.conn.commit()
-                    dialog.destroy()
+                    dialog.close()
                 
                     # Show results
                     result_msg = f"Import completed!\n\n"
@@ -15517,28 +15527,28 @@ class AITCMMSSystem:
                         result_msg += f"WARNING: Skipped (errors): {error_count} records\n"
                     result_msg += f"\nTotal processed: {imported_count + error_count} records"
                 
-                    messagebox.showinfo("Import Results", result_msg)
+                    QMessageBox.information(self, "Import Results", result_msg)
                     self.refresh_equipment_list()
                     self.update_status(f"Imported {imported_count} equipment records")
                 
                 except Exception as e:
-                    messagebox.showerror("Error", f"Failed to process import: {str(e)}")
+                    QMessageBox.critical(self, "Error", f"Failed to process import: {str(e)}")
         
             def cancel_import():
                     """Cancel the import process"""
-                    dialog.destroy()
+                    dialog.close()
         
             # WARNING: BUTTONS FRAME - This was missing!
-            button_frame = ttk.Frame(scrollable_frame)
+            button_frame = QWidget(scrollable_frame)
             button_frame.pack(side='bottom', fill='x', padx=20, pady=20)
         
             # Import button (green)
-            import_button = ttk.Button(button_frame, text="Import with These Mappings", 
+            import_button = QPushButton(button_frame, text="Import with These Mappings", 
                                     command=process_import)
             import_button.pack(side='left', padx=10)
         
             # Cancel button
-            cancel_button = ttk.Button(button_frame, text="Cancel", 
+            cancel_button = QPushButton(button_frame, text="Cancel", 
                                     command=cancel_import)
             cancel_button.pack(side='right', padx=10)
         
@@ -15551,17 +15561,17 @@ class AITCMMSSystem:
             dialog.grab_set()
         
         except Exception as e:
-            messagebox.showerror("Error", f"Failed to read CSV file: {str(e)}")
+            QMessageBox.critical(self, "Error", f"Failed to read CSV file: {str(e)}")
             return
     
     
     
     def add_equipment_dialog(self):
         """Dialog to add new equipment"""
-        dialog = tk.Toplevel(self.root)
-        dialog.title("Add New Equipment")
+        dialog = QDialog(self.root)
+        dialog.setWindowTitle("Add New Equipment")
         dialog.geometry("500x400")
-        dialog.transient(self.root)
+        dialog.setParent(self.root)
         dialog.grab_set()
         
         # Form fields
@@ -15577,22 +15587,22 @@ class AITCMMSSystem:
         entries = {}
         
         for i, (label, var) in enumerate(fields):
-            ttk.Label(dialog, text=label).grid(row=i, column=0, sticky='w', padx=10, pady=5)
-            entry = ttk.Entry(dialog, textvariable=var, width=30)
+            QLabel(dialog, text=label).grid(row=i, column=0, sticky='w', padx=10, pady=5)
+            entry = QLineEdit(dialog, textvariable=var, width=30)
             entry.grid(row=i, column=1, padx=10, pady=5)
             entries[label] = var
         
         # PM type checkboxes
-        pm_frame = ttk.LabelFrame(dialog, text="PM Types", padding=10)
+        pm_frame = QLabelFrame(dialog, text="PM Types", padding=10)
         pm_frame.grid(row=len(fields), column=0, columnspan=2, padx=10, pady=10, sticky='ew')
         
         monthly_var = tk.BooleanVar(value=True)
         six_month_var = tk.BooleanVar(value=True)
         annual_var = tk.BooleanVar(value=True)
         
-        ttk.Checkbutton(pm_frame, text="Monthly PM", variable=monthly_var).pack(anchor='w')
-        ttk.Checkbutton(pm_frame, text="Six Month PM", variable=six_month_var).pack(anchor='w')
-        ttk.Checkbutton(pm_frame, text="Annual PM", variable=annual_var).pack(anchor='w')
+        QCheckBox(pm_frame, text="Monthly PM", variable=monthly_var).pack(anchor='w')
+        QCheckBox(pm_frame, text="Six Month PM", variable=six_month_var).pack(anchor='w')
+        QCheckBox(pm_frame, text="Annual PM", variable=annual_var).pack(anchor='w')
         
         def save_equipment():
             try:
@@ -15613,24 +15623,24 @@ class AITCMMSSystem:
                         six_month_var.get(),
                         annual_var.get()
                     ))
-                messagebox.showinfo("Success", "Equipment added successfully!")
-                dialog.destroy()
+                QMessageBox.information(self, "Success", "Equipment added successfully!")
+                dialog.close()
                 self.refresh_equipment_list()
             except Exception as e:
-                messagebox.showerror("Error", f"Failed to add equipment: {str(e)}")
+                QMessageBox.critical(self, "Error", f"Failed to add equipment: {str(e)}")
         
         # Buttons
-        button_frame = ttk.Frame(dialog)
+        button_frame = QWidget(dialog)
         button_frame.grid(row=len(fields)+1, column=0, columnspan=2, pady=10)
         
-        ttk.Button(button_frame, text="Save", command=save_equipment).pack(side='left', padx=5)
-        ttk.Button(button_frame, text="Cancel", command=dialog.destroy).pack(side='left', padx=5)
+        QPushButton(button_frame, text="Save", command=save_equipment).pack(side='left', padx=5)
+        QPushButton(button_frame, text="Cancel", command=dialog.destroy).pack(side='left', padx=5)
     
     def edit_equipment_dialog(self):
         """Enhanced dialog to edit existing equipment with Run to Failure and Cannot Find options"""
         selected = self.equipment_tree.selection()
         if not selected:
-            messagebox.showwarning("Warning", "Please select equipment to edit")
+            QMessageBox.warning(self, "Warning", "Please select equipment to edit")
             return
 
         # Get selected equipment data
@@ -15644,17 +15654,17 @@ class AITCMMSSystem:
                 equipment_data = cursor.fetchone()
 
                 if not equipment_data:
-                    messagebox.showerror("Error", "Equipment not found in database")
+                    QMessageBox.critical(self, "Error", "Equipment not found in database")
                     return
         except Exception as e:
-            messagebox.showerror("Error", f"Database error: {str(e)}")
+            QMessageBox.critical(self, "Error", f"Database error: {str(e)}")
             return
 
         # Create edit dialog
-        dialog = tk.Toplevel(self.root)
-        dialog.title("Edit Equipment")
+        dialog = QDialog(self.root)
+        dialog.setWindowTitle("Edit Equipment")
         dialog.geometry("500x550")  # Made slightly taller for Cannot Find option
-        dialog.transient(self.root)
+        dialog.setParent(self.root)
         dialog.grab_set()
 
         # Pre-populate fields
@@ -15670,13 +15680,13 @@ class AITCMMSSystem:
         entries = {}
 
         for i, (label, var) in enumerate(fields):
-            ttk.Label(dialog, text=label).grid(row=i, column=0, sticky='w', padx=10, pady=5)
-            entry = ttk.Entry(dialog, textvariable=var, width=30)
+            QLabel(dialog, text=label).grid(row=i, column=0, sticky='w', padx=10, pady=5)
+            entry = QLineEdit(dialog, textvariable=var, width=30)
             entry.grid(row=i, column=1, padx=10, pady=5)
             entries[label] = var
 
         # PM type checkboxes and Equipment Status options
-        pm_frame = ttk.LabelFrame(dialog, text="PM Types & Equipment Status", padding=10)
+        pm_frame = QLabelFrame(dialog, text="PM Types & Equipment Status", padding=10)
         pm_frame.grid(row=len(fields), column=0, columnspan=2, padx=10, pady=10, sticky='ew')
 
         # Current equipment status
@@ -15687,13 +15697,13 @@ class AITCMMSSystem:
         six_month_var = tk.BooleanVar(value=bool(equipment_data['six_month_pm']))
         annual_var = tk.BooleanVar(value=bool(equipment_data['annual_pm']))
 
-        monthly_cb = ttk.Checkbutton(pm_frame, text="Monthly PM", variable=monthly_var)
+        monthly_cb = QCheckBox(pm_frame, text="Monthly PM", variable=monthly_var)
         monthly_cb.pack(anchor='w')
 
-        six_month_cb = ttk.Checkbutton(pm_frame, text="Six Month PM", variable=six_month_var)
+        six_month_cb = QCheckBox(pm_frame, text="Six Month PM", variable=six_month_var)
         six_month_cb.pack(anchor='w')
 
-        annual_cb = ttk.Checkbutton(pm_frame, text="Annual PM", variable=annual_var)
+        annual_cb = QCheckBox(pm_frame, text="Annual PM", variable=annual_var)
         annual_cb.pack(anchor='w')
         
         # Disable PM checkboxes if currently Cannot Find or Run to Failure
@@ -15703,42 +15713,42 @@ class AITCMMSSystem:
             annual_cb.config(state='disabled')
 
         # Separator
-        ttk.Separator(pm_frame, orient='horizontal').pack(fill='x', pady=10)
+        QFrame(pm_frame, orient='horizontal').pack(fill='x', pady=10)
 
         # Run to Failure option
         run_to_failure_var = tk.BooleanVar(value=(current_status == 'Run to Failure'))
-        rtf_cb = ttk.Checkbutton(pm_frame, text="Set as Run to Failure Equipment", 
+        rtf_cb = QCheckBox(pm_frame, text="Set as Run to Failure Equipment", 
                                 variable=run_to_failure_var,
                                 command=lambda: toggle_status_options())
         rtf_cb.pack(anchor='w', pady=5)
     
         # Run to Failure warning label
-        rtf_warning_label = ttk.Label(pm_frame, text="Status: Will be set to Run to Failure", 
+        rtf_warning_label = QLabel(pm_frame, text="Status: Will be set to Run to Failure", 
                                     foreground='red', font=('Arial', 9, 'italic'))
         if run_to_failure_var.get():
             rtf_warning_label.pack(anchor='w', padx=20)
 
         # Cannot Find option - NEW!
         cannot_find_var = tk.BooleanVar(value=(current_status == 'Cannot Find'))
-        cf_cb = ttk.Checkbutton(pm_frame, text="Mark as Cannot Find", 
+        cf_cb = QCheckBox(pm_frame, text="Mark as Cannot Find", 
                             variable=cannot_find_var,
                             command=lambda: toggle_status_options())
         cf_cb.pack(anchor='w', pady=5)
 
         # Cannot Find warning label
-        cf_warning_label = ttk.Label(pm_frame, text="Status: Will be set to Cannot Find (PMs disabled)", 
+        cf_warning_label = QLabel(pm_frame, text="Status: Will be set to Cannot Find (PMs disabled)", 
                                     foreground='red', font=('Arial', 9, 'italic'))
         if cannot_find_var.get():
             cf_warning_label.pack(anchor='w', padx=20)
 
         # Status info
-        status_label = ttk.Label(pm_frame, text=f"Current Status: {current_status}", 
+        status_label = QLabel(pm_frame, text=f"Current Status: {current_status}", 
                                 font=('Arial', 9, 'italic'))
         status_label.pack(anchor='w', pady=5)
 
         # Technician selection for Cannot Find (appears when Cannot Find is checked)
-        tech_frame = ttk.Frame(pm_frame)
-        ttk.Label(tech_frame, text="Reported By:").pack(side='left', padx=(0, 5))
+        tech_frame = QWidget(pm_frame)
+        QLabel(tech_frame, text="Reported By:").pack(side='left', padx=(0, 5))
         tech_var = tk.StringVar()
     
         # Pre-populate technician if asset is already Cannot Find
@@ -15752,7 +15762,7 @@ class AITCMMSSystem:
             except Exception as e:
                 print(f"Warning: Could not fetch technician data: {e}")
     
-        tech_combo = ttk.Combobox(tech_frame, textvariable=tech_var, width=20)
+        tech_combo = QComboBox(tech_frame, textvariable=tech_var, width=20)
         tech_combo['values'] = self.technicians if hasattr(self, 'technicians') else []
         tech_combo.pack(side='left')
     
@@ -15802,7 +15812,7 @@ class AITCMMSSystem:
                 tech_frame.pack_forget()
 
         # Run to Failure note
-        note_label = ttk.Label(pm_frame, 
+        note_label = QLabel(pm_frame, 
                               text="Run to Failure and Cannot Find equipment will not be scheduled for PMs",
                               font=('Arial', 8), foreground='orange')
         note_label.pack(anchor='w', pady=(5, 0))
@@ -15873,7 +15883,7 @@ class AITCMMSSystem:
                         # Get technician name
                         technician = tech_var.get().strip()
                         if not technician:
-                            messagebox.showwarning("Missing Information", "Please select who is reporting this asset as Cannot Find")
+                            QMessageBox.warning(self, "Missing Information", "Please select who is reporting this asset as Cannot Find")
                             return
 
                         # Add or update in cannot_find_assets table
@@ -15913,8 +15923,8 @@ class AITCMMSSystem:
                 else:
                     success_msg = f"Equipment {bfm_no} updated successfully!\n\nStatus: Active"
             
-                messagebox.showinfo("Success", success_msg)
-                dialog.destroy()
+                QMessageBox.information(self, "Success", success_msg)
+                dialog.close()
             
                 # Refresh all relevant displays
                 self.refresh_equipment_list()
@@ -15934,16 +15944,16 @@ class AITCMMSSystem:
                     self.update_status(f"Equipment {bfm_no} reactivated")
             
             except Exception as e:
-                messagebox.showerror("Error", f"Failed to update equipment: {str(e)}")
+                QMessageBox.critical(self, "Error", f"Failed to update equipment: {str(e)}")
 
         # Buttons
-        button_frame = ttk.Frame(dialog)
+        button_frame = QWidget(dialog)
         button_frame.grid(row=len(fields)+1, column=0, columnspan=2, pady=15)
 
-        update_btn = ttk.Button(button_frame, text="Update Equipment", command=update_equipment)
+        update_btn = QPushButton(button_frame, text="Update Equipment", command=update_equipment)
         update_btn.pack(side='left', padx=10)
 
-        cancel_btn = ttk.Button(button_frame, text="Cancel", command=dialog.destroy)
+        cancel_btn = QPushButton(button_frame, text="Cancel", command=dialog.destroy)
         cancel_btn.pack(side='left', padx=5)
     
     
@@ -15954,7 +15964,7 @@ class AITCMMSSystem:
         selected_items = self.equipment_tree.selection()
     
         if not selected_items:
-            messagebox.showwarning("No Selection", 
+            QMessageBox.warning(self, "No Selection", 
                                  "Please select one or more assets to edit.\n\n" +
                                  "Tip: Hold Ctrl to select multiple items, or Shift to select a range.")
             return
@@ -15967,10 +15977,10 @@ class AITCMMSSystem:
             selected_bfms.append(bfm_no)
     
         # Create dialog
-        dialog = tk.Toplevel(self.root)
-        dialog.title("Bulk Edit PM Cycles")
+        dialog = QDialog(self.root)
+        dialog.setWindowTitle("Bulk Edit PM Cycles")
         dialog.geometry("500x400")
-        dialog.transient(self.root)
+        dialog.setParent(self.root)
         dialog.grab_set()
     
         # Center dialog
@@ -15980,24 +15990,24 @@ class AITCMMSSystem:
         dialog.geometry(f"500x400+{x}+{y}")
         
         # Header
-        header_frame = ttk.Frame(dialog, padding=20)
+        header_frame = QWidget(dialog, padding=20)
         header_frame.pack(fill='x')
         
-        ttk.Label(header_frame, text="Bulk Edit PM Cycles", 
+        QLabel(header_frame, text="Bulk Edit PM Cycles", 
                 font=('Arial', 14, 'bold')).pack()
-        ttk.Label(header_frame, text=f"Editing {len(selected_bfms)} selected asset(s)", 
+        QLabel(header_frame, text=f"Editing {len(selected_bfms)} selected asset(s)", 
                 font=('Arial', 10), foreground='blue').pack(pady=5)
     
         # Separator
-        ttk.Separator(dialog, orient='horizontal').pack(fill='x', pady=10)
+        QFrame(dialog, orient='horizontal').pack(fill='x', pady=10)
         
         # Show selected assets
-        assets_frame = ttk.LabelFrame(dialog, text="Selected Assets", padding=10)
+        assets_frame = QLabelFrame(dialog, text="Selected Assets", padding=10)
         assets_frame.pack(fill='both', expand=True, padx=20, pady=10)
         
         # Scrollable list of selected assets
-        assets_text = tk.Text(assets_frame, height=6, width=50, wrap='word')
-        assets_scrollbar = ttk.Scrollbar(assets_frame, orient='vertical', command=assets_text.yview)
+        assets_text = QTextEdit(assets_frame, height=6, width=50, wrap='word')
+        assets_scrollbar = QScrollArea(assets_frame, orient='vertical', command=assets_text.yview)
         assets_text.configure(yscrollcommand=assets_scrollbar.set)
         
         # Get asset details
@@ -16016,35 +16026,35 @@ class AITCMMSSystem:
         assets_scrollbar.pack(side='right', fill='y')
     
         # PM Cycle options
-        pm_frame = ttk.LabelFrame(dialog, text="PM Cycle Settings", padding=15)
+        pm_frame = QLabelFrame(dialog, text="PM Cycle Settings", padding=15)
         pm_frame.pack(fill='x', padx=20, pady=10)
     
-        ttk.Label(pm_frame, text="Select which PM cycles to apply:", 
+        QLabel(pm_frame, text="Select which PM cycles to apply:", 
                 font=('Arial', 10, 'bold')).pack(anchor='w', pady=(0, 10))
     
         # Monthly PM
         monthly_var = tk.BooleanVar(value=False)
-        monthly_check = ttk.Checkbutton(pm_frame, text="Monthly PM (every 30 days)", 
+        monthly_check = QCheckBox(pm_frame, text="Monthly PM (every 30 days)", 
                                         variable=monthly_var)
         monthly_check.pack(anchor='w', pady=3)
         
         # Six Month PM
         six_month_var = tk.BooleanVar(value=False)
-        six_month_check = ttk.Checkbutton(pm_frame, text="Six Month PM (every 180 days)", 
+        six_month_check = QCheckBox(pm_frame, text="Six Month PM (every 180 days)", 
                                         variable=six_month_var)
         six_month_check.pack(anchor='w', pady=3)
     
         # Annual PM
         annual_var = tk.BooleanVar(value=True)  # Default to Annual
-        annual_check = ttk.Checkbutton(pm_frame, text="Annual PM (every 365 days)", 
+        annual_check = QCheckBox(pm_frame, text="Annual PM (every 365 days)", 
                                     variable=annual_var)
         annual_check.pack(anchor='w', pady=3)
     
-        ttk.Label(pm_frame, text="Note: Unchecked cycles will be DISABLED for selected assets.", 
+        QLabel(pm_frame, text="Note: Unchecked cycles will be DISABLED for selected assets.", 
                 font=('Arial', 9), foreground='gray').pack(anchor='w', pady=(10, 0))
     
         # Buttons
-        button_frame = ttk.Frame(dialog, padding=10)
+        button_frame = QWidget(dialog, padding=10)
         button_frame.pack(fill='x', side='bottom')
     
         def apply_changes():
@@ -16064,7 +16074,7 @@ class AITCMMSSystem:
                     pm_types.append("Annual")
             
                 if not pm_types:
-                    result = messagebox.askyesno(
+                    result = QMessageBox.question(self, 
                         "Warning - No PM Cycles Selected",
                         f"You are about to DISABLE ALL PM cycles for {len(selected_bfms)} asset(s).\n\n" +
                         "This means these assets will NOT be scheduled for any preventive maintenance.\n\n" +
@@ -16074,7 +16084,7 @@ class AITCMMSSystem:
                     )
                 else:
                     pm_list = ", ".join(pm_types)
-                    result = messagebox.askyesno(
+                    result = QMessageBox.question(self, 
                         "Confirm Changes",
                         f"Apply the following PM cycles to {len(selected_bfms)} asset(s)?\n\n" +
                         f"PM Cycles: {pm_list}\n\n" +
@@ -16102,25 +16112,25 @@ class AITCMMSSystem:
                 self.conn.commit()
             
                 # Success message
-                messagebox.showinfo(
+                QMessageBox.information(self, 
                     "Success",
                     f"Successfully updated PM cycles for {updated_count} asset(s)!",
                     parent=dialog
                 )
             
                 # Close dialog and refresh
-                dialog.destroy()
+                dialog.close()
                 self.refresh_equipment_list()
                 self.update_status(f"Bulk updated PM cycles for {updated_count} assets")
             
             except Exception as e:
-                messagebox.showerror("Error", f"Failed to update PM cycles:\n\n{str(e)}", parent=dialog)
+                QMessageBox.critical(self, "Error", f"Failed to update PM cycles:\n\n{str(e)}", parent=dialog)
     
-        ttk.Button(button_frame, text="Apply to All Selected", 
+        QPushButton(button_frame, text="Apply to All Selected", 
                 command=apply_changes,
                 style='Accent.TButton').pack(side='left', padx=5)
     
-        ttk.Button(button_frame, text="Cancel", 
+        QPushButton(button_frame, text="Cancel", 
                 command=dialog.destroy).pack(side='right', padx=5)
 
 
@@ -16166,7 +16176,7 @@ class AITCMMSSystem:
         
         except Exception as e:
             print(f"Error refreshing equipment list: {e}")
-            messagebox.showerror("Error", f"Failed to refresh equipment list: {str(e)}")
+            QMessageBox.critical(self, "Error", f"Failed to refresh equipment list: {str(e)}")
     
     def filter_equipment_list(self, *args):
         """Filter equipment list based on search term and location"""
@@ -16281,7 +16291,7 @@ class AITCMMSSystem:
     def export_equipment_list(self):
         """Export equipment list to CSV"""
         try:
-            file_path = filedialog.asksaveasfilename(
+            file_path = QFileDialog.getSaveFileName(self, 
                 title="Export Equipment List",
                 defaultextension=".csv",
                 filetypes=[("CSV files", "*.csv"), ("All files", "*.*")]
@@ -16311,10 +16321,10 @@ class AITCMMSSystem:
                 df = pd.DataFrame(equipment_data, columns=columns)
                 df.to_csv(file_path, index=False)
             
-                messagebox.showinfo("Success", f"Equipment list exported to {file_path}")
+                QMessageBox.information(self, "Success", f"Equipment list exported to {file_path}")
             
         except Exception as e:
-            messagebox.showerror("Error", f"Failed to export equipment list: {str(e)}")
+            QMessageBox.critical(self, "Error", f"Failed to export equipment list: {str(e)}")
     
     def load_equipment_data(self):
         """Load equipment data from database"""
@@ -16338,7 +16348,7 @@ class AITCMMSSystem:
         try:
             # Validate that technicians are configured
             if not hasattr(self, 'technicians') or not self.technicians or len(self.technicians) == 0:
-                messagebox.showerror(
+                QMessageBox.critical(self, 
                     "Configuration Error",
                     "No technicians configured in the system.\n\n"
                     "Please contact your system administrator."
@@ -16353,7 +16363,7 @@ class AITCMMSSystem:
 
             # Validate that at least one technician is available
             if len(available_technicians) == 0:
-                messagebox.showerror(
+                QMessageBox.critical(self, 
                     "Configuration Error",
                     "All technicians are excluded from scheduling.\n\n"
                     "Please ensure at least one technician is available for PM assignment."
@@ -16363,7 +16373,7 @@ class AITCMMSSystem:
             # Show info if technicians are excluded
             if excluded_techs:
                 excluded_names = ", ".join(excluded_techs)
-                messagebox.showinfo(
+                QMessageBox.information(self, 
                     "Technician Exclusions",
                     f"The following technician(s) will be excluded from this week's schedule:\n\n"
                     f"{excluded_names}\n\n"
@@ -16382,13 +16392,13 @@ class AITCMMSSystem:
             if result['success']:
                 # Check if there's a special message (like no equipment or no assignments)
                 if 'message' in result and result['total_assignments'] == 0:
-                    messagebox.showinfo(
+                    QMessageBox.information(self, 
                         "Scheduling Complete",
                         f"{result['message']}\n\n"
                         f"Week: {week_start}"
                     )
                 else:
-                    messagebox.showinfo(
+                    QMessageBox.information(self, 
                         "NEW SYSTEM - Scheduling Complete",
                         f"Generated {result['total_assignments']} PM assignments for week {week_start}\n\n"
                         f"Unique assets: {result['unique_assets']}\n\n"
@@ -16399,10 +16409,10 @@ class AITCMMSSystem:
                 self.refresh_technician_schedules()
                 self.update_status(f"NEW SYSTEM: Generated {result['total_assignments']} PM assignments")
             else:
-                messagebox.showerror("NEW SYSTEM Error", f"Failed to generate assignments: {result['error']}")
+                QMessageBox.critical(self, "NEW SYSTEM Error", f"Failed to generate assignments: {result['error']}")
 
         except Exception as e:
-            messagebox.showerror("NEW SYSTEM Error", f"Failed to generate assignments: {str(e)}")
+            QMessageBox.critical(self, "NEW SYSTEM Error", f"Failed to generate assignments: {str(e)}")
             import traceback
             traceback.print_exc()
 
@@ -16492,11 +16502,11 @@ class AITCMMSSystem:
                     filename = os.path.join(forms_dir, f"{technician.replace(' ', '_')}_PM_Forms.pdf")
                     self.create_pm_forms_pdf(filename, technician, assignments)
         
-            messagebox.showinfo("Success", f"PM forms generated in directory: {forms_dir}")
+            QMessageBox.information(self, "Success", f"PM forms generated in directory: {forms_dir}")
             self.update_status(f"PM forms generated for week {week_start}")
         
         except Exception as e:
-            messagebox.showerror("Error", f"Failed to generate PM forms: {str(e)}")
+            QMessageBox.critical(self, "Error", f"Failed to generate PM forms: {str(e)}")
     
     def create_pm_forms_pdf(self, filename, technician, assignments):
         """Create PDF with PM forms for a technician - ENHANCED WITH CUSTOM TEMPLATES"""
@@ -16889,38 +16899,38 @@ class AITCMMSSystem:
                 summary_df = pd.DataFrame(summary_data, columns=['Technician', 'Assigned PMs'])
                 summary_df.to_excel(writer, sheet_name='Summary', index=False)
             
-            messagebox.showinfo("Success", f"Weekly schedule exported to {filename}")
+            QMessageBox.information(self, "Success", f"Weekly schedule exported to {filename}")
             
         except Exception as e:
-            messagebox.showerror("Error", f"Failed to export weekly schedule: {str(e)}")
+            QMessageBox.critical(self, "Error", f"Failed to export weekly schedule: {str(e)}")
     
     def create_pm_history_search_tab(self):
         """PM History Search tab for comprehensive equipment completion information"""
-        self.pm_history_frame = ttk.Frame(self.notebook)
+        self.pm_history_frame = QWidget(self.notebook)
         self.notebook.add(self.pm_history_frame, text="PM History Search")
     
         # Search controls
-        search_controls_frame = ttk.LabelFrame(self.pm_history_frame, text="Search Equipment PM History", padding=15)
+        search_controls_frame = QLabelFrame(self.pm_history_frame, text="Search Equipment PM History", padding=15)
         search_controls_frame.pack(fill='x', padx=10, pady=5)
     
         # Search input
-        search_input_frame = ttk.Frame(search_controls_frame)
+        search_input_frame = QWidget(search_controls_frame)
         search_input_frame.pack(fill='x', pady=5)
     
-        ttk.Label(search_input_frame, text="Search:").pack(side='left', padx=5)
+        QLabel(search_input_frame, text="Search:").pack(side='left', padx=5)
         self.history_search_var = tk.StringVar()
-        search_entry = ttk.Entry(search_input_frame, textvariable=self.history_search_var, width=30)
+        search_entry = QLineEdit(search_input_frame, textvariable=self.history_search_var, width=30)
         search_entry.pack(side='left', padx=5)
     
-        ttk.Button(search_input_frame, text="Search", command=self.search_pm_history_simple).pack(side='left', padx=5)
-        ttk.Button(search_input_frame, text="Clear", command=self.clear_search_simple).pack(side='left', padx=5)
+        QPushButton(search_input_frame, text="Search", command=self.search_pm_history_simple).pack(side='left', padx=5)
+        QPushButton(search_input_frame, text="Clear", command=self.clear_search_simple).pack(side='left', padx=5)
     
         # Results display
-        results_frame = ttk.LabelFrame(self.pm_history_frame, text="Search Results", padding=10)
+        results_frame = QLabelFrame(self.pm_history_frame, text="Search Results", padding=10)
         results_frame.pack(fill='both', expand=True, padx=10, pady=5)
     
         # Results tree
-        self.history_search_tree = ttk.Treeview(results_frame,
+        self.history_search_tree = QTreeWidget(results_frame,
                                             columns=('BFM No', 'SAP No', 'Description', 'PM Type', 'Technician', 'Date', 'Hours'),
                                             show='headings')
     
@@ -17034,10 +17044,10 @@ class AITCMMSSystem:
     def show_smart_merge_dialog(self):
         """Show dialog explaining conflict and offering merge options - NOW WITH SCROLLBAR"""
     
-        dialog = tk.Toplevel(self.root)
-        dialog.title("WARNING: Database Conflict Detected")
+        dialog = QDialog(self.root)
+        dialog.setWindowTitle("WARNING: Database Conflict Detected")
         dialog.geometry("750x700")
-        dialog.transient(self.root)
+        dialog.setParent(self.root)
         dialog.grab_set()
         
         # Center dialog
@@ -17050,8 +17060,8 @@ class AITCMMSSystem:
         
         # Main container with scrollbar
         main_canvas = tk.Canvas(dialog)
-        scrollbar = ttk.Scrollbar(dialog, orient="vertical", command=main_canvas.yview)
-        scrollable_frame = ttk.Frame(main_canvas)
+        scrollbar = QScrollArea(dialog, orient="vertical", command=main_canvas.yview)
+        scrollable_frame = QWidget(main_canvas)
         
         scrollable_frame.bind(
             "<Configure>",
@@ -17062,18 +17072,18 @@ class AITCMMSSystem:
         main_canvas.configure(yscrollcommand=scrollbar.set)
 
         # Header with warning
-        header_frame = ttk.Frame(scrollable_frame, padding=20)
+        header_frame = QWidget(scrollable_frame, padding=20)
         header_frame.pack(fill='x')
 
-        ttk.Label(header_frame, text="Database Conflict Detected!", 
+        QLabel(header_frame, text="Database Conflict Detected!", 
                 font=('Arial', 16, 'bold'), foreground='red').pack()
-        ttk.Label(header_frame, text="Team members updated the database while you were working", 
+        QLabel(header_frame, text="Team members updated the database while you were working", 
                 font=('Arial', 11), foreground='orange').pack(pady=5)
 
-        ttk.Separator(scrollable_frame, orient='horizontal').pack(fill='x', pady=10)
+        QFrame(scrollable_frame, orient='horizontal').pack(fill='x', pady=10)
 
         # Situation explanation
-        situation_frame = ttk.LabelFrame(scrollable_frame, text="What Happened", padding=15)
+        situation_frame = QLabelFrame(scrollable_frame, text="What Happened", padding=15)
         situation_frame.pack(fill='x', padx=20, pady=10)
 
         session_duration = datetime.now() - self.session_start_time
@@ -17096,10 +17106,10 @@ class AITCMMSSystem:
     If you close now without merging, their work will be LOST! CHECK:
         """
 
-        ttk.Label(situation_frame, text=situation_text, justify='left').pack(anchor='w')
+        QLabel(situation_frame, text=situation_text, justify='left').pack(anchor='w')
 
         # Merge explanation
-        merge_frame = ttk.LabelFrame(scrollable_frame, text="How Smart Merge Works", padding=15)
+        merge_frame = QLabelFrame(scrollable_frame, text="How Smart Merge Works", padding=15)
         merge_frame.pack(fill='x', padx=20, pady=10)
 
         merge_explanation = """
@@ -17123,11 +17133,11 @@ class AITCMMSSystem:
     4. Result: Combined database with EVERYONE'S work! CHECK:
         """
     
-        ttk.Label(merge_frame, text=merge_explanation, justify='left',
+        QLabel(merge_frame, text=merge_explanation, justify='left',
                 font=('Courier', 9)).pack(anchor='w')
 
         # Options
-        options_frame = ttk.LabelFrame(scrollable_frame, text="Your Options", padding=15)
+        options_frame = QLabelFrame(scrollable_frame, text="Your Options", padding=15)
         options_frame.pack(fill='x', padx=20, pady=10)
 
         options_text = """
@@ -17144,18 +17154,18 @@ class AITCMMSSystem:
     CHECK: Coordinate with team first
         """
 
-        ttk.Label(options_frame, text=options_text, justify='left').pack(anchor='w')
+        QLabel(options_frame, text=options_text, justify='left').pack(anchor='w')
 
         # Buttons
-        button_frame = ttk.Frame(scrollable_frame, padding=15)
+        button_frame = QWidget(scrollable_frame, padding=15)
         button_frame.pack(fill='x', side='bottom')
 
         def do_merge():
             result["action"] = "merge"
-            dialog.destroy()
+            dialog.close()
 
         def do_override():
-            confirm = messagebox.askyesno(
+            confirm = QMessageBox.question(self, 
                 "WARNING: CONFIRM OVERRIDE",
                 "You are about to OVERWRITE other users' work!\n\n"
                 "Their PM completions, CMs, and updates will be LOST!\n\n"
@@ -17165,20 +17175,20 @@ class AITCMMSSystem:
             )
             if confirm:
                 result["action"] = "override"
-                dialog.destroy()
+                dialog.close()
 
         def do_cancel():
             result["action"] = "cancel"
-            dialog.destroy()
+            dialog.close()
 
-        ttk.Button(button_frame, text="Smart Merge (Recommended)", 
+        QPushButton(button_frame, text="Smart Merge (Recommended)", 
                 command=do_merge,
                 style='Accent.TButton').pack(side='left', padx=5)
 
-        ttk.Button(button_frame, text="Cancel", 
+        QPushButton(button_frame, text="Cancel", 
                 command=do_cancel).pack(side='left', padx=5)
 
-        ttk.Button(button_frame, text="Override Their Work", 
+        QPushButton(button_frame, text="Override Their Work", 
                 command=do_override).pack(side='right', padx=5)
 
         # Pack the canvas and scrollbar
@@ -17190,7 +17200,7 @@ class AITCMMSSystem:
             main_canvas.yview_scroll(int(-1*(event.delta/120)), "units")
         main_canvas.bind_all("<MouseWheel>", on_mousewheel)
 
-        dialog.wait_window()
+        dialog.exec_()
         return result["action"]
 
 
@@ -17198,10 +17208,10 @@ class AITCMMSSystem:
     def show_closing_sync_dialog(self):
         """Show dialog when closing program normally - NOW WITH SCROLLBAR"""
     
-        dialog = tk.Toplevel(self.root)
-        dialog.title("Close AIT CMMS")
+        dialog = QDialog(self.root)
+        dialog.setWindowTitle("Close AIT CMMS")
         dialog.geometry("650x600")
-        dialog.transient(self.root)
+        dialog.setParent(self.root)
         dialog.grab_set()
         
         # Center dialog
@@ -17214,8 +17224,8 @@ class AITCMMSSystem:
         
         # Main container with scrollbar
         main_canvas = tk.Canvas(dialog)
-        scrollbar = ttk.Scrollbar(dialog, orient="vertical", command=main_canvas.yview)
-        scrollable_frame = ttk.Frame(main_canvas)
+        scrollbar = QScrollArea(dialog, orient="vertical", command=main_canvas.yview)
+        scrollable_frame = QWidget(main_canvas)
         
         scrollable_frame.bind(
             "<Configure>",
@@ -17226,16 +17236,16 @@ class AITCMMSSystem:
         main_canvas.configure(yscrollcommand=scrollbar.set)
         
         # Header
-        header_frame = ttk.Frame(scrollable_frame, padding=20)
+        header_frame = QWidget(scrollable_frame, padding=20)
         header_frame.pack(fill='x')
 
-        ttk.Label(header_frame, text="Close AIT CMMS", 
+        QLabel(header_frame, text="Close AIT CMMS", 
                 font=('Arial', 14, 'bold')).pack()
 
-        ttk.Separator(scrollable_frame, orient='horizontal').pack(fill='x', pady=10)
+        QFrame(scrollable_frame, orient='horizontal').pack(fill='x', pady=10)
 
         # Session info
-        info_frame = ttk.LabelFrame(scrollable_frame, text="Session Information", padding=15)
+        info_frame = QLabelFrame(scrollable_frame, text="Session Information", padding=15)
         info_frame.pack(fill='x', padx=20, pady=10)
 
         session_duration = datetime.now() - self.session_start_time
@@ -17253,11 +17263,11 @@ class AITCMMSSystem:
     SharePoint Folder: {os.path.basename(self.backup_sync_dir) if hasattr(self, 'backup_sync_dir') and self.backup_sync_dir else 'Not Connected'}
         """
 
-        ttk.Label(info_frame, text=info_text, justify='left', 
+        QLabel(info_frame, text=info_text, justify='left', 
                 font=('Courier', 9)).pack(anchor='w')
 
         # Sync explanation
-        sync_frame = ttk.LabelFrame(scrollable_frame, text="What Happens Next", padding=15)
+        sync_frame = QLabelFrame(scrollable_frame, text="What Happens Next", padding=15)
         sync_frame.pack(fill='x', padx=20, pady=10)
 
         sync_text = """When you click 'Backup and Close':
@@ -17270,31 +17280,31 @@ class AITCMMSSystem:
     This ensures all your work is saved.
         """
     
-        ttk.Label(sync_frame, text=sync_text, justify='left').pack(anchor='w')
+        QLabel(sync_frame, text=sync_text, justify='left').pack(anchor='w')
 
         # Important note
-        note_frame = ttk.Frame(scrollable_frame, padding=10)
+        note_frame = QWidget(scrollable_frame, padding=10)
         note_frame.pack(fill='x', padx=20)
 
-        ttk.Label(note_frame, 
+        QLabel(note_frame, 
                   text="Note: Last person to close the program pushes the final database state",
                   foreground='blue', font=('Arial', 9),
                   wraplength=550).pack()
 
         # Buttons
-        button_frame = ttk.Frame(scrollable_frame, padding=15)
+        button_frame = QWidget(scrollable_frame, padding=15)
         button_frame.pack(fill='x', side='bottom')
 
         def sync_and_close():
             result["action"] = "sync_and_close"
-            dialog.destroy()
+            dialog.close()
 
         def cancel_close():
             result["action"] = "cancel"
-            dialog.destroy()
+            dialog.close()
 
         def close_without_sync():
-            confirm = messagebox.askyesno(
+            confirm = QMessageBox.question(self, 
                 "Confirm Close Without Backup",
                 "Close without backing up to SharePoint?\n\n"
                 "WARNING: WARNING: Your changes will NOT be saved!\n"
@@ -17305,16 +17315,16 @@ class AITCMMSSystem:
             )
             if confirm:
                 result["action"] = "close_without_sync"
-                dialog.destroy()
+                dialog.close()
 
-        ttk.Button(button_frame, text="Backup and Close", 
+        QPushButton(button_frame, text="Backup and Close", 
                 command=sync_and_close,
                 style='Accent.TButton').pack(side='left', padx=5)
 
-        ttk.Button(button_frame, text="Cancel", 
+        QPushButton(button_frame, text="Cancel", 
                 command=cancel_close).pack(side='left', padx=5)
 
-        ttk.Button(button_frame, text="Close Without Backup", 
+        QPushButton(button_frame, text="Close Without Backup", 
                 command=close_without_sync).pack(side='right', padx=5)
 
         # Pack the canvas and scrollbar
@@ -17326,7 +17336,7 @@ class AITCMMSSystem:
             main_canvas.yview_scroll(int(-1*(event.delta/120)), "units")
         main_canvas.bind_all("<MouseWheel>", on_mousewheel)
 
-        dialog.wait_window()
+        dialog.exec_()
         return result["action"]
 
     
@@ -17335,10 +17345,10 @@ class AITCMMSSystem:
         """Comprehensively merge all changes from both databases - NOW WITH SCROLLBAR"""
         try:
             # Show progress
-            progress = tk.Toplevel(self.root)
-            progress.title("Comprehensive Smart Merge in Progress...")
+            progress = QDialog(self.root)
+            progress.setWindowTitle("Comprehensive Smart Merge in Progress...")
             progress.geometry("650x500")
-            progress.transient(self.root)
+            progress.setParent(self.root)
             progress.grab_set()
             
             # Center progress
@@ -17349,8 +17359,8 @@ class AITCMMSSystem:
             
             # Main container with scrollbar
             main_canvas = tk.Canvas(progress)
-            scrollbar = ttk.Scrollbar(progress, orient="vertical", command=main_canvas.yview)
-            scrollable_frame = ttk.Frame(main_canvas)
+            scrollbar = QScrollArea(progress, orient="vertical", command=main_canvas.yview)
+            scrollable_frame = QWidget(main_canvas)
             
             scrollable_frame.bind(
                 "<Configure>",
@@ -17362,18 +17372,18 @@ class AITCMMSSystem:
         
             status_var = tk.StringVar(value="Preparing comprehensive merge...")
     
-            ttk.Label(scrollable_frame, text="Comprehensive Smart Merge", 
+            QLabel(scrollable_frame, text="Comprehensive Smart Merge", 
                     font=('Arial', 14, 'bold')).pack(pady=20)
     
-            status_label = ttk.Label(scrollable_frame, textvariable=status_var, 
+            status_label = QLabel(scrollable_frame, textvariable=status_var, 
                                     font=('Arial', 10), wraplength=600)
             status_label.pack(pady=10)
     
-            progress_bar = ttk.Progressbar(scrollable_frame, mode='indeterminate', length=550)
+            progress_bar = QProgressBar(scrollable_frame, mode='indeterminate', length=550)
             progress_bar.pack(pady=10)
             progress_bar.start()
     
-            log_text = tk.Text(scrollable_frame, height=15, width=75, font=('Courier', 8))
+            log_text = QTextEdit(scrollable_frame, height=15, width=75, font=('Courier', 8))
             log_text.pack(pady=10, padx=20)
     
             def log(message):
@@ -17482,7 +17492,7 @@ class AITCMMSSystem:
             progress.after(3000, lambda: self.finish_close(progress))
     
         except Exception as e:
-            messagebox.showerror("Merge Error", 
+            QMessageBox.critical(self, "Merge Error", 
                                f"Error during merge:\n{str(e)}\n\n"
                                "Your work is saved locally.\n"
                                "Contact support for help.")
@@ -17774,12 +17784,12 @@ class AITCMMSSystem:
         if hasattr(self, 'conn'):
             self.conn.close()
     
-        self.root.destroy()
+        self.root.close()
     
     
     def finish_close(self, progress_dialog):
         """Final cleanup and close"""
-        progress_dialog.destroy()
+        progress_dialog.close()
     
         if hasattr(self, 'conn'):
             try:
@@ -17787,7 +17797,7 @@ class AITCMMSSystem:
             except:
                 pass
     
-        self.root.destroy()
+        self.root.close()
     
     def clear_all_mro_inventory(self):
         """Clear ALL MRO stock inventory items from the database"""
@@ -17798,11 +17808,11 @@ class AITCMMSSystem:
         total_count = cursor.fetchone()[0]
     
         if total_count == 0:
-            messagebox.showinfo("No Items", "There are no MRO inventory items to clear.")
+            QMessageBox.information(self, "No Items", "There are no MRO inventory items to clear.")
             return
     
         # Show confirmation dialog with count
-        result = messagebox.askyesno(
+        result = QMessageBox.question(self, 
             "WARNING: Confirm Clear All MRO Inventory",
             f"Are you sure you want to DELETE ALL {total_count} MRO inventory items?\n\n"
             "WARNING: WARNING: This action cannot be undone!\n"
@@ -17820,7 +17830,7 @@ class AITCMMSSystem:
             return
     
         # Double confirmation for safety
-        double_check = messagebox.askyesno(
+        double_check = QMessageBox.question(self, 
             "WARNING: Final Confirmation",
             f"FINAL WARNING!\n\n"
             f"You are about to permanently delete {total_count} inventory items.\n\n"
@@ -17830,7 +17840,7 @@ class AITCMMSSystem:
         )
     
         if not double_check:
-            messagebox.showinfo("Cancelled", "Clear operation cancelled. No items were deleted.")
+            QMessageBox.information(self, "Cancelled", "Clear operation cancelled. No items were deleted.")
             return
     
         try:
@@ -17846,7 +17856,7 @@ class AITCMMSSystem:
             self.update_status(f"CHECK: Successfully cleared {total_count} MRO inventory items")
         
             # Show success message
-            messagebox.showinfo(
+            QMessageBox.information(self, 
                 "Success", 
                 f"All {total_count} MRO inventory items have been permanently deleted.\n\n"
                 "The MRO inventory is now empty."
@@ -17854,7 +17864,7 @@ class AITCMMSSystem:
         
         except Exception as e:
             self.conn.rollback()
-            messagebox.showerror("Error", f"Failed to clear MRO inventory: {str(e)}")
+            QMessageBox.critical(self, "Error", f"Failed to clear MRO inventory: {str(e)}")
             print(f"Clear MRO inventory error: {e}")
 
     # ========================================================================
@@ -17865,14 +17875,14 @@ class AITCMMSSystem:
         """Show equipment manager statistics and attention items"""
         try:
             if not hasattr(self, 'equipment_manager') or self.equipment_manager is None:
-                messagebox.showerror("Error", "Equipment manager not initialized")
+                QMessageBox.critical(self, "Error", "Equipment manager not initialized")
                 return
 
             # Create dialog
-            dialog = tk.Toplevel(self.root)
-            dialog.title("Equipment Manager")
+            dialog = QDialog(self.root)
+            dialog.setWindowTitle("Equipment Manager")
             dialog.geometry("800x600")
-            dialog.transient(self.root)
+            dialog.setParent(self.root)
             dialog.grab_set()
 
             # Center dialog
@@ -17882,11 +17892,11 @@ class AITCMMSSystem:
             dialog.geometry(f"800x600+{x}+{y}")
 
             # Header
-            ttk.Label(dialog, text="Equipment Manager",
+            QLabel(dialog, text="Equipment Manager",
                      font=('Arial', 14, 'bold')).pack(pady=10)
 
             # Statistics text
-            stats_text = tk.Text(dialog, wrap='word', font=('Courier', 10))
+            stats_text = QTextEdit(dialog, wrap='word', font=('Courier', 10))
             stats_text.pack(fill='both', expand=True, padx=10, pady=10)
 
             # Get statistics
@@ -17944,17 +17954,17 @@ OVERDUE MONTHLY PMs: {len(attention['overdue_monthly'])}
             stats_text.config(state='disabled')
 
             # Button
-            ttk.Button(dialog, text="Close", command=dialog.destroy).pack(pady=10)
+            QPushButton(dialog, text="Close", command=dialog.destroy).pack(pady=10)
 
         except Exception as e:
-            messagebox.showerror("Error", f"Error opening equipment manager: {str(e)}")
+            QMessageBox.critical(self, "Error", f"Error opening equipment manager: {str(e)}")
             print(f"Equipment manager error: {e}")
 
     def show_equipment_history_dialog(self):
         """Show equipment history for selected or entered equipment"""
         try:
             if not hasattr(self, 'equipment_manager') or self.equipment_manager is None:
-                messagebox.showerror("Error", "Equipment manager not initialized")
+                QMessageBox.critical(self, "Error", "Equipment manager not initialized")
                 return
 
             # Ensure connection is in clean state
@@ -17964,7 +17974,6 @@ OVERDUE MONTHLY PMs: {len(attention['overdue_monthly'])}
                 pass
 
             # Ask for BFM number
-            from tkinter import simpledialog
             bfm_no = simpledialog.askstring(
                 "Equipment History",
                 "Enter Equipment BFM Number:",
@@ -17977,7 +17986,7 @@ OVERDUE MONTHLY PMs: {len(attention['overdue_monthly'])}
                     if self.equipment_manager.validate_bfm_number(bfm_no):
                         show_equipment_history(self.root, self.conn, str(bfm_no))
                     else:
-                        messagebox.showerror("Not Found",
+                        QMessageBox.critical(self, "Not Found",
                             f"Equipment '{bfm_no}' not found in database.\n\n"
                             "Please check the BFM number and try again.")
                 except Exception as e:
@@ -17989,7 +17998,7 @@ OVERDUE MONTHLY PMs: {len(attention['overdue_monthly'])}
                     raise e
 
         except Exception as e:
-            messagebox.showerror("Error", f"Error opening equipment history: {str(e)}")
+            QMessageBox.critical(self, "Error", f"Error opening equipment history: {str(e)}")
             print(f"Equipment history error: {e}")
             # Ensure clean state for next operation
             try:
@@ -18008,20 +18017,20 @@ OVERDUE MONTHLY PMs: {len(attention['overdue_monthly'])}
 
             # Check role
             if self.current_user_role != 'Manager':
-                messagebox.showerror("Access Denied",
+                QMessageBox.critical(self, "Access Denied",
                     "Only managers can access KPI features.\n\n"
                     f"Your role: {self.current_user_role}")
                 return
 
             if not hasattr(self, 'kpi_collector') or self.kpi_collector is None:
-                messagebox.showerror("Error", "KPI collector not initialized")
+                QMessageBox.critical(self, "Error", "KPI collector not initialized")
                 return
 
             # Create dialog
-            dialog = tk.Toplevel(self.root)
-            dialog.title("Auto-Collect KPIs")
+            dialog = QDialog(self.root)
+            dialog.setWindowTitle("Auto-Collect KPIs")
             dialog.geometry("600x500")
-            dialog.transient(self.root)
+            dialog.setParent(self.root)
             dialog.grab_set()
 
             # Center dialog
@@ -18031,22 +18040,22 @@ OVERDUE MONTHLY PMs: {len(attention['overdue_monthly'])}
             dialog.geometry(f"600x500+{x}+{y}")
 
             # Header
-            header = ttk.Label(dialog, text="Auto-Collect KPIs from Database",
+            header = QLabel(dialog, text="Auto-Collect KPIs from Database",
                               font=('Arial', 14, 'bold'))
             header.pack(pady=20)
 
             # Info
-            info = ttk.Label(dialog,
+            info = QLabel(dialog,
                            text="Automatically calculate KPIs from existing maintenance data.\n"
                                 "This eliminates manual data entry and improves accuracy.",
                            justify='center')
             info.pack(pady=10)
 
             # Period selection
-            period_frame = ttk.LabelFrame(dialog, text="Select Period", padding=10)
+            period_frame = QLabelFrame(dialog, text="Select Period", padding=10)
             period_frame.pack(pady=20, padx=20, fill='x')
 
-            ttk.Label(period_frame, text="Month:").grid(row=0, column=0, padx=5, pady=5, sticky='e')
+            QLabel(period_frame, text="Month:").grid(row=0, column=0, padx=5, pady=5, sticky='e')
 
             # Generate last 12 months
             months = []
@@ -18055,12 +18064,12 @@ OVERDUE MONTHLY PMs: {len(attention['overdue_monthly'])}
                 months.append(date.strftime('%Y-%m'))
 
             period_var = tk.StringVar(value=months[0])
-            period_combo = ttk.Combobox(period_frame, textvariable=period_var,
+            period_combo = QComboBox(period_frame, textvariable=period_var,
                                        values=months, width=15, state='readonly')
             period_combo.grid(row=0, column=1, padx=5, pady=5)
 
             # Preview text
-            preview_text = tk.Text(dialog, height=10, width=70, wrap='word')
+            preview_text = QTextEdit(dialog, height=10, width=70, wrap='word')
             preview_text.pack(pady=10, padx=20)
 
             def preview():
@@ -18082,14 +18091,14 @@ OVERDUE MONTHLY PMs: {len(attention['overdue_monthly'])}
                     preview_text.insert('1.0', f"Error: {str(e)}")
 
             # Buttons
-            button_frame = ttk.Frame(dialog)
+            button_frame = QWidget(dialog)
             button_frame.pack(pady=20)
 
-            ttk.Button(button_frame, text="Preview",
+            QPushButton(button_frame, text="Preview",
                       command=preview).pack(side='left', padx=5)
 
             def save():
-                if messagebox.askyesno("Confirm",
+                if QMessageBox.question(self, "Confirm",
                     f"Auto-collect and save KPIs for {period_var.get()}?\n\n"
                     "This will update the KPI database."):
                     try:
@@ -18099,24 +18108,24 @@ OVERDUE MONTHLY PMs: {len(attention['overdue_monthly'])}
                         )
 
                         if result['success']:
-                            messagebox.showinfo("Success",
+                            QMessageBox.information(self, "Success",
                                 f"Successfully auto-collected {result['saved_count']} KPIs!\n\n"
                                 f"Period: {result['period']}\n\n"
                                 "You can now view these in the KPI dashboard.")
-                            dialog.destroy()
+                            dialog.close()
                         else:
-                            messagebox.showerror("Error", f"Error: {result.get('error', 'Unknown error')}")
+                            QMessageBox.critical(self, "Error", f"Error: {result.get('error', 'Unknown error')}")
                     except Exception as e:
-                        messagebox.showerror("Error", f"Error saving KPIs: {str(e)}")
+                        QMessageBox.critical(self, "Error", f"Error saving KPIs: {str(e)}")
 
-            ttk.Button(button_frame, text="Save to Database",
+            QPushButton(button_frame, text="Save to Database",
                       command=save).pack(side='left', padx=5)
 
-            ttk.Button(button_frame, text="Close",
+            QPushButton(button_frame, text="Close",
                       command=dialog.destroy).pack(side='left', padx=5)
 
         except Exception as e:
-            messagebox.showerror("Error", f"Error opening KPI collector: {str(e)}")
+            QMessageBox.critical(self, "Error", f"Error opening KPI collector: {str(e)}")
             print(f"KPI collector error: {e}")
 
     def show_kpi_trends_dialog(self):
@@ -18124,29 +18133,29 @@ OVERDUE MONTHLY PMs: {len(attention['overdue_monthly'])}
         try:
             # Check role
             if self.current_user_role != 'Manager':
-                messagebox.showerror("Access Denied",
+                QMessageBox.critical(self, "Access Denied",
                     "Only managers can access KPI features.\n\n"
                     f"Your role: {self.current_user_role}")
                 return
 
             if not hasattr(self, 'kpi_trend_analyzer') or self.kpi_trend_analyzer is None:
-                messagebox.showerror("Error", "KPI trend analyzer not initialized")
+                QMessageBox.critical(self, "Error", "KPI trend analyzer not initialized")
                 return
 
             show_kpi_trends(self.root, self.conn)
 
         except Exception as e:
-            messagebox.showerror("Error", f"Error opening KPI trends: {str(e)}")
+            QMessageBox.critical(self, "Error", f"Error opening KPI trends: {str(e)}")
             print(f"KPI trends error: {e}")
 
     def show_backup_manager_dialog(self):
         """Show backup manager information"""
         try:
             # Create dialog
-            dialog = tk.Toplevel(self.root)
-            dialog.title("Backup Manager")
+            dialog = QDialog(self.root)
+            dialog.setWindowTitle("Backup Manager")
             dialog.geometry("900x500")
-            dialog.transient(self.root)
+            dialog.setParent(self.root)
             dialog.grab_set()
 
             # Center dialog
@@ -18156,11 +18165,11 @@ OVERDUE MONTHLY PMs: {len(attention['overdue_monthly'])}
             dialog.geometry(f"900x500+{x}+{y}")
 
             # Header
-            ttk.Label(dialog, text="Database Backup Manager",
+            QLabel(dialog, text="Database Backup Manager",
                      font=('Arial', 14, 'bold')).pack(pady=20)
 
             # Info text
-            info_text = tk.Text(dialog, wrap='word', height=20, width=100)
+            info_text = QTextEdit(dialog, wrap='word', height=20, width=100)
             info_text.pack(padx=20, pady=10, fill='both', expand=True)
 
             info_text.insert('1.0', """
@@ -18229,15 +18238,16 @@ For detailed documentation, see:
             info_text.config(state='disabled')
 
             # Button
-            ttk.Button(dialog, text="Close", command=dialog.destroy).pack(pady=10)
+            QPushButton(dialog, text="Close", command=dialog.destroy).pack(pady=10)
 
         except Exception as e:
-            messagebox.showerror("Error", f"Error opening backup manager: {str(e)}")
+            QMessageBox.critical(self, "Error", f"Error opening backup manager: {str(e)}")
             print(f"Backup manager error: {e}")
 
 
 # Main application startup
 if __name__ == "__main__":
-    root = tk.Tk()
-    app = AITCMMSSystem(root)
-    root.mainloop()
+    app = QApplication(sys.argv)
+    window = AITCMMSSystem()
+    window.show()
+    sys.exit(app.exec_())
