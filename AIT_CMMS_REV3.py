@@ -6325,51 +6325,57 @@ class AITCMMSSystem(QMainWindow):
 
             login_dialog = QDialog(self.root)
             login_dialog.setWindowTitle("AIT CMMS - User Login")
-            login_dialog.geometry("400x250")
-            login_dialog.setParent(self.root)
-            login_dialog.grab_set()
+            login_dialog.resize(400, 250)
+            login_dialog.setModal(True)  # PyQt5 equivalent of grab_set()
 
-            # Center the dialog
-            login_dialog.update_idletasks()
-            x = (login_dialog.winfo_screenwidth() // 2) - (login_dialog.winfo_width() // 2)
-            y = (login_dialog.winfo_screenheight() // 2) - (login_dialog.winfo_height() // 2)
-            login_dialog.geometry(f"+{x}+{y}")
-
-            # Prevent closing the dialog with X button
-            login_dialog.protocol("WM_DELETE_WINDOW", lambda: None)
+            # Main layout
+            main_layout = QVBoxLayout(login_dialog)
+            main_layout.setContentsMargins(20, 20, 20, 20)
+            main_layout.setSpacing(10)
 
             # Header
-            header_frame = QWidget(login_dialog)
-            header_frame.pack(fill='x', padx=20, pady=20)
+            header_label1 = QLabel("AIT CMMS LOGIN")
+            header_font1 = QFont('Arial', 16)
+            header_font1.setBold(True)
+            header_label1.setFont(header_font1)
+            header_label1.setAlignment(Qt.AlignCenter)
+            main_layout.addWidget(header_label1)
 
-            QLabel(header_frame, text="AIT CMMS LOGIN",
-                    font=('Arial', 16, 'bold')).pack()
-            QLabel(header_frame, text="Enter your credentials",
-                    font=('Arial', 10)).pack(pady=5)
+            header_label2 = QLabel("Enter your credentials")
+            header_font2 = QFont('Arial', 10)
+            header_label2.setFont(header_font2)
+            header_label2.setAlignment(Qt.AlignCenter)
+            main_layout.addWidget(header_label2)
 
             # Login form
-            form_frame = QWidget(login_dialog)
-            form_frame.pack(fill='both', expand=True, padx=20, pady=10)
+            form_layout = QGridLayout()
+            form_layout.setSpacing(5)
 
             # Username
-            QLabel(form_frame, text="Username:", font=('Arial', 10)).grid(row=0, column=0, sticky='w', pady=5)
-            username_var = tk.StringVar()
-            username_entry = QLineEdit(form_frame, textvariable=username_var, width=25)
-            username_entry.grid(row=0, column=1, sticky='ew', pady=5)
-            username_entry.focus_set()
+            username_label = QLabel("Username:")
+            username_label.setFont(QFont('Arial', 10))
+            form_layout.addWidget(username_label, 0, 0)
+            username_entry = QLineEdit()
+            username_entry.setMinimumWidth(200)
+            form_layout.addWidget(username_entry, 0, 1)
+            username_entry.setFocus()
 
             # Password
-            QLabel(form_frame, text="Password:", font=('Arial', 10)).grid(row=1, column=0, sticky='w', pady=5)
-            password_var = tk.StringVar()
-            password_entry = QLineEdit(form_frame, textvariable=password_var, show="*", width=25)
-            password_entry.grid(row=1, column=1, sticky='ew', pady=5)
-
-            form_frame.columnconfigure(1, weight=1)
+            password_label = QLabel("Password:")
+            password_label.setFont(QFont('Arial', 10))
+            form_layout.addWidget(password_label, 1, 0)
+            password_entry = QLineEdit()
+            password_entry.setEchoMode(QLineEdit.Password)
+            password_entry.setMinimumWidth(200)
+            form_layout.addWidget(password_entry, 1, 1)
 
             # Status label
-            status_var = tk.StringVar()
-            status_label = QLabel(form_frame, textvariable=status_var, foreground='red', font=('Arial', 9))
-            status_label.grid(row=2, column=0, columnspan=2, pady=5)
+            status_label = QLabel("")
+            status_label.setStyleSheet("color: red;")
+            status_label.setFont(QFont('Arial', 9))
+            form_layout.addWidget(status_label, 2, 0, 1, 2)
+
+            main_layout.addLayout(form_layout)
 
             login_in_progress = False
 
@@ -6380,14 +6386,14 @@ class AITCMMSSystem(QMainWindow):
                     return
 
                 login_in_progress = True
-                status_var.set("")
+                status_label.setText("")
 
                 try:
-                    username = username_var.get().strip()
-                    password = password_var.get()
+                    username = username_entry.text().strip()
+                    password = password_entry.text()
 
                     if not username or not password:
-                        status_var.set("Please enter both username and password")
+                        status_label.setText("Please enter both username and password")
                         return
 
                     # Authenticate using database
@@ -6411,16 +6417,16 @@ class AITCMMSSystem(QMainWindow):
                                 self.current_user_role = user['role']
 
                                 login_successful = True
-                                dialog.quit()
+                                login_dialog.accept()
                             else:
-                                status_var.set("Invalid username or password")
-                                password_var.set("")
-                                password_entry.focus_set()
+                                status_label.setText("Invalid username or password")
+                                password_entry.clear()
+                                password_entry.setFocus()
 
                     except Exception as e:
                         print(f"Login error: {e}")
-                        status_var.set("Login failed. Please try again.")
-                        password_var.set("")
+                        status_label.setText("Login failed. Please try again.")
+                        password_entry.clear()
 
                 finally:
                     login_in_progress = False
@@ -6428,23 +6434,26 @@ class AITCMMSSystem(QMainWindow):
             def cancel_login():
                 nonlocal login_successful
                 login_successful = False
-                dialog.quit()
+                login_dialog.reject()
 
             # Buttons
-            button_frame = QWidget(login_dialog)
-            button_frame.pack(side='bottom', fill='x', padx=20, pady=20)
+            button_layout = QHBoxLayout()
+            login_button = QPushButton("Login")
+            login_button.clicked.connect(do_login)
+            login_button.setDefault(True)  # Makes Enter key trigger this button
+            button_layout.addWidget(login_button)
+            button_layout.addStretch()
+            exit_button = QPushButton("Exit")
+            exit_button.clicked.connect(cancel_login)
+            button_layout.addWidget(exit_button)
 
-            login_button = QPushButton(button_frame, text="Login", command=do_login)
-            login_button.pack(side='left', padx=5)
-            QPushButton(button_frame, text="Exit", command=cancel_login).pack(side='right', padx=5)
+            main_layout.addLayout(button_layout)
 
-            # Enter key bindings
-            def on_enter_key(event):
-                if not login_in_progress:
-                    do_login()
-
-            username_entry.bind('<Return>', on_enter_key)
-            password_entry.bind('<Return>', on_enter_key)
+            # Center the dialog on screen
+            screen = QApplication.primaryScreen().geometry()
+            x = (screen.width() - login_dialog.width()) // 2
+            y = (screen.height() - login_dialog.height()) // 2
+            login_dialog.move(x, y)
 
             return login_dialog
 
