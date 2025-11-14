@@ -4355,27 +4355,25 @@ class AITCMMSSystem(QMainWindow):
 
     
     def add_logo_to_main_window(self):
-        """Add AIT logo to the main application window - LEFT SIDE ONLY"""
+        """Add AIT logo to the main application window - LEFT SIDE ONLY (PyQt5)"""
         try:
-            from PIL import Image, ImageTk
-            
             # Get the directory where the script is located
             script_dir = os.path.dirname(os.path.abspath(__file__))
             img_dir = os.path.join(script_dir, "img")
             logo_path = os.path.join(img_dir, "ait_logo.png")
-        
+
             # Create img directory if it doesn't exist
             if not os.path.exists(img_dir):
                 os.makedirs(img_dir)
                 print(f"Created img directory: {img_dir}")
-        
+
             # Alternative paths to try
             alternative_paths = [
                 os.path.join(script_dir, "ait_logo.png"),  # Same directory as script
                 os.path.join(script_dir, "img", "ait_logo.png"),  # img subdirectory
                 "ait_logo.png"  # Current working directory
             ]
-        
+
             logo_found = False
             for path in alternative_paths:
                 if os.path.exists(path):
@@ -4383,34 +4381,36 @@ class AITCMMSSystem(QMainWindow):
                     logo_found = True
                     print(f"Found logo at: {logo_path}")
                     break
-        
+
             if not logo_found:
                 print(f"Logo file not found. Tried paths: {alternative_paths}")
                 print("Please place your logo file in one of these locations.")
                 return
-            
+
             if os.path.exists(logo_path):
-                # Open and resize image for tkinter
-                pil_image = Image.open(logo_path)
-                pil_image = pil_image.resize((200, 60), Image.Resampling.LANCZOS)  # Reasonable size for left corner
-                
-                # Convert to PhotoImage
-                self.logo_image = ImageTk.PhotoImage(pil_image)
-                
-                # Create logo frame at top left of window
-                logo_frame = QWidget(self.root)
-                logo_frame.pack(side='top', fill='x', padx=10, pady=5)
-            
-                # Add logo label (left aligned)
-                logo_label = QLabel(logo_frame, image=self.logo_image)
-                logo_label.pack(side='left')
-                
-                # Optional: Add a subtle separator line below
-                separator = QFrame(self.root, orient='horizontal')
-                separator.pack(fill='x', padx=10, pady=2)
-            
-        except ImportError:
-            print("PIL (Pillow) not installed. Install with: pip install Pillow")
+                # Load and resize image using QPixmap (PyQt5)
+                pixmap = QPixmap(logo_path)
+                if not pixmap.isNull():
+                    # Resize to reasonable size for left corner
+                    pixmap = pixmap.scaled(200, 60, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+
+                    # Create logo frame at top left of window
+                    logo_frame = QWidget(self.root)
+                    logo_layout = QHBoxLayout(logo_frame)
+                    logo_layout.setContentsMargins(10, 5, 10, 5)
+
+                    # Add logo label (left aligned)
+                    logo_label = QLabel()
+                    logo_label.setPixmap(pixmap)
+                    logo_layout.addWidget(logo_label, alignment=Qt.AlignLeft)
+                    logo_layout.addStretch()
+
+                    # Add logo frame to main window
+                    # Note: This will be added to the layout when create_gui sets up the main layout
+                    self.logo_frame = logo_frame
+                else:
+                    print(f"Failed to load image from {logo_path}")
+
         except Exception as e:
             print(f"Error loading logo: {e}")
     
@@ -4420,16 +4420,21 @@ class AITCMMSSystem(QMainWindow):
     # SharePoint backup functions removed - using PostgreSQL only
 
 
-    def on_closing(self):
+    def closeEvent(self, event):
+        """Handle window close event (PyQt5)"""
+        self.on_closing(event)
+
+    def on_closing(self, event=None):
         """Close application, end user session, and cleanup connections"""
         try:
-            result = QMessageBox.question(self, 
+            result = QMessageBox.question(self.root,
                 "Confirm Exit",
                 "Are you sure you want to close the application?",
-                icon='question'
+                QMessageBox.Yes | QMessageBox.No,
+                QMessageBox.No
             )
 
-            if result:
+            if result == QMessageBox.Yes:
                 try:
                     # End user session
                     if hasattr(self, 'session_id') and self.session_id:
@@ -4464,11 +4469,21 @@ class AITCMMSSystem(QMainWindow):
                 except Exception as e:
                     print(f"WARNING: Unexpected error during cleanup: {e}")
 
-                self.root.close()
+                if event:
+                    event.accept()  # Allow window to close
+                else:
+                    self.root.close()
+            else:
+                # User clicked No
+                if event:
+                    event.ignore()  # Prevent window from closing
 
         except Exception as e:
             print(f"Error during closing: {e}")
-            self.root.close()
+            if event:
+                event.accept()
+            else:
+                self.root.close()
 
     # Backup functions removed - using PostgreSQL only
 
@@ -5885,17 +5900,10 @@ class AITCMMSSystem(QMainWindow):
 
 
         # Defer initial data loading to keep UI responsive at startup
-        # This prevents the app from freezing during initialization
-        self.root.after(100, self._deferred_startup_tasks)
-    
-        print(f"CHECK: AIT Complete CMMS System initialized successfully for {self.user_name} ({self.current_user_role})")
+        # This prevents the app from freezing during initialization (PyQt5)
+        QTimer.singleShot(100, self._deferred_startup_tasks)
 
-       
-    
-        # Add this at the very end of __init__:
-    
-        # Set up window close handler
-        self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
+        print(f"CHECK: AIT Complete CMMS System initialized successfully for {self.user_name} ({self.current_user_role})")
         self.setup_program_colors()
         print(f"AIT Complete CMMS System initialized successfully for {self.user_name} ({self.current_user_role})")
 
@@ -8622,70 +8630,88 @@ class AITCMMSSystem(QMainWindow):
     
     def create_gui(self):
         """Create the main GUI interface based on user role"""
-        # Create style
-        style = None  # QApplication.style()
-        style.theme_use('clam')
+        # PyQt5 uses stylesheets for theming instead of ttk.Style
+        # The default PyQt5 style is modern and clean
 
-        # Create menu bar (available to all users)
-        menubar = QMenu(self.root)
-        self.root.config(menu=menubar)
+        # Create menu bar (available to all users) - PyQt5
+        menubar = self.root.menuBar()
 
         # Account menu
-        account_menu = QMenu(menubar, tearoff=0)
-        menubar.add_cascade(label="Account", menu=account_menu)
-        account_menu.add_command(label="Change Password", command=self.open_change_password)
-        account_menu.add_separator()
-        account_menu.add_command(label="Logout", command=self.logout)
+        account_menu = menubar.addMenu("Account")
+        change_password_action = account_menu.addAction("Change Password")
+        change_password_action.triggered.connect(self.open_change_password)
+        account_menu.addSeparator()
+        logout_action = account_menu.addAction("Logout")
+        logout_action.triggered.connect(self.logout)
 
         # Tools menu - NEW MODULAR FEATURES
-        tools_menu = QMenu(menubar, tearoff=0)
-        menubar.add_cascade(label="Tools", menu=tools_menu)
+        tools_menu = menubar.addMenu("Tools")
 
         # Equipment tools
-        tools_menu.add_command(label="Equipment Manager",
-                              command=self.show_equipment_manager_dialog,
-                              font=('Arial', 10))
-        tools_menu.add_command(label="Equipment History",
-                              command=self.show_equipment_history_dialog,
-                              font=('Arial', 10))
+        equipment_manager_action = tools_menu.addAction("Equipment Manager")
+        equipment_manager_action.triggered.connect(self.show_equipment_manager_dialog)
+        equipment_history_action = tools_menu.addAction("Equipment History")
+        equipment_history_action.triggered.connect(self.show_equipment_history_dialog)
 
         # KPI tools (visible to all, but will check role in methods)
-        tools_menu.add_separator()
-        tools_menu.add_command(label="Auto-Collect KPIs",
-                              command=self.auto_collect_kpis_dialog,
-                              font=('Arial', 10))
-        tools_menu.add_command(label="KPI Trends & Alerts",
-                              command=self.show_kpi_trends_dialog,
-                              font=('Arial', 10))
+        tools_menu.addSeparator()
+        auto_collect_kpis_action = tools_menu.addAction("Auto-Collect KPIs")
+        auto_collect_kpis_action.triggered.connect(self.auto_collect_kpis_dialog)
+        kpi_trends_action = tools_menu.addAction("KPI Trends & Alerts")
+        kpi_trends_action.triggered.connect(self.show_kpi_trends_dialog)
 
         # Backup tools
-        tools_menu.add_separator()
-        tools_menu.add_command(label="Backup Manager",
-                              command=self.show_backup_manager_dialog,
-                              font=('Arial', 10))
+        tools_menu.addSeparator()
+        backup_manager_action = tools_menu.addAction("Backup Manager")
+        backup_manager_action.triggered.connect(self.show_backup_manager_dialog)
+
+        # Set up central widget and main layout (PyQt5)
+        central_widget = QWidget()
+        self.root.setCentralWidget(central_widget)
+        main_layout = QVBoxLayout(central_widget)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+        main_layout.setSpacing(0)
+
+        # Add logo frame if it exists
+        if hasattr(self, 'logo_frame'):
+            main_layout.addWidget(self.logo_frame)
 
         # Toolbar frame at the top (for Manager actions)
         if self.current_user_role == 'Manager':
-            toolbar_frame = QWidget(self.root, relief='raised', borderwidth=1)
-            toolbar_frame.pack(side='top', fill='x', padx=5, pady=5)
+            toolbar_frame = QFrame()
+            toolbar_frame.setFrameStyle(QFrame.Raised | QFrame.StyledPanel)
+            toolbar_layout = QHBoxLayout(toolbar_frame)
+            toolbar_layout.setContentsMargins(5, 5, 5, 5)
 
             # Left side - Title
-            QLabel(toolbar_frame, text="Manager Tools:",
-                     font=('Arial', 10, 'bold')).pack(side='left', padx=10)
+            title_label = QLabel("Manager Tools:")
+            title_font = QFont('Arial', 10)
+            title_font.setBold(True)
+            title_label.setFont(title_font)
+            toolbar_layout.addWidget(title_label)
 
             # Right side - Action buttons
-            QPushButton(toolbar_frame, text="👥 Manage Users",
-                      command=self.open_user_management).pack(side='left', padx=5)
+            manage_users_btn = QPushButton("👥 Manage Users")
+            manage_users_btn.clicked.connect(self.open_user_management)
+            toolbar_layout.addWidget(manage_users_btn)
 
-            QPushButton(toolbar_frame, text="Switch to Technician View",
-                      command=self.switch_to_technician_view).pack(side='left', padx=5)
+            switch_view_btn = QPushButton("Switch to Technician View")
+            switch_view_btn.clicked.connect(self.switch_to_technician_view)
+            toolbar_layout.addWidget(switch_view_btn)
+
+            toolbar_layout.addStretch()
+
+            main_layout.addWidget(toolbar_frame)
 
             # Separator
-            QFrame(self.root, orient='horizontal').pack(fill='x', padx=5)
+            separator = QFrame()
+            separator.setFrameShape(QFrame.HLine)
+            separator.setFrameShadow(QFrame.Sunken)
+            main_layout.addWidget(separator)
 
         # Main notebook for tabs
-        self.notebook = QTabWidget(self.root)
-        self.notebook.pack(fill='both', expand=True, padx=10, pady=10)
+        self.notebook = QTabWidget()
+        main_layout.addWidget(self.notebook, 1)  # stretch factor of 1
 
         # Create tabs based on role
         if self.current_user_role == 'Manager':
@@ -8699,12 +8725,15 @@ class AITCMMSSystem(QMainWindow):
             self.create_technician_tabs()
 
         # Status bar with user info
-        status_frame = QWidget(self.root)
-        status_frame.pack(side='bottom', fill='x')
+        status_frame = QFrame()
+        status_frame.setFrameStyle(QFrame.Sunken | QFrame.Panel)
+        status_layout = QHBoxLayout(status_frame)
+        status_layout.setContentsMargins(2, 2, 2, 2)
 
-        self.status_bar = QLabel(status_frame, text=f"AIT CMMS Ready - Logged in as: {self.user_name} ({self.current_user_role})",
-                                    relief='sunken')
-        self.status_bar.pack(side='left', fill='x', expand=True)
+        self.status_bar = QLabel(f"AIT CMMS Ready - Logged in as: {self.user_name} ({self.current_user_role})")
+        status_layout.addWidget(self.status_bar)
+
+        main_layout.addWidget(status_frame)
 
     def create_all_manager_tabs(self):
         """Create all tabs for manager access"""
