@@ -60,6 +60,427 @@ except ImportError:
     REPORTLAB_AVAILABLE = False
     print("ReportLab not installed. PDF generation will not work.")
 
+# ===== TKINTER COMPATIBILITY LAYER FOR PYQT5 =====
+# This module provides tkinter-style methods and classes for PyQt5 widgets
+# to support legacy code during migration from tkinter to PyQt5
+
+class TkinterCompatNamespace:
+    """Namespace to hold tkinter compatibility classes like StringVar"""
+
+    class StringVar:
+        """PyQt5 compatible StringVar that wraps a simple string value"""
+        def __init__(self, value=""):
+            self._value = str(value)
+            self._callbacks = []
+
+        def get(self):
+            return self._value
+
+        def set(self, value):
+            self._value = str(value)
+            for callback in self._callbacks:
+                callback()
+
+        def trace(self, mode, callback):
+            """Add a callback when value changes"""
+            self._callbacks.append(callback)
+
+# Create tk namespace for compatibility
+tk = TkinterCompatNamespace()
+
+# Monkey-patch PyQt5 widgets to support tkinter-style methods
+
+def _create_pack_method(widget):
+    """Create a pack() method for PyQt5 widgets that uses layouts"""
+    def pack(self, side=None, fill=None, expand=None, padx=0, pady=0, anchor=None, **kwargs):
+        """Tkinter-style pack method for PyQt5 widgets"""
+        parent = self.parent()
+        if parent is None:
+            return self
+
+        # Get or create layout for parent
+        layout = parent.layout()
+        if layout is None:
+            from PyQt5.QtWidgets import QVBoxLayout, QHBoxLayout
+            # Default to vertical layout
+            if side in ('left', 'right'):
+                layout = QHBoxLayout(parent)
+            else:
+                layout = QVBoxLayout(parent)
+            parent.setLayout(layout)
+
+        # Add widget to layout
+        layout.addWidget(self)
+
+        # Handle margins (padx, pady)
+        if padx or pady:
+            layout.setContentsMargins(padx, pady, padx, pady)
+
+        return self
+    return pack
+
+def _create_grid_method(widget):
+    """Create a grid() method for PyQt5 widgets"""
+    def grid(self, row=0, column=0, rowspan=1, columnspan=1, sticky=None, padx=0, pady=0, **kwargs):
+        """Tkinter-style grid method for PyQt5 widgets"""
+        parent = self.parent()
+        if parent is None:
+            return self
+
+        # Get or create grid layout for parent
+        layout = parent.layout()
+        if layout is None:
+            from PyQt5.QtWidgets import QGridLayout
+            layout = QGridLayout(parent)
+            parent.setLayout(layout)
+
+        # Add widget to grid layout
+        if hasattr(layout, 'addWidget'):
+            try:
+                layout.addWidget(self, row, column, rowspan, columnspan)
+            except:
+                layout.addWidget(self)
+
+        return self
+    return grid
+
+def _create_place_method(widget):
+    """Create a place() method for PyQt5 widgets"""
+    def place(self, x=0, y=0, width=None, height=None, relx=None, rely=None, **kwargs):
+        """Tkinter-style place method for PyQt5 widgets"""
+        if x or y:
+            self.move(x, y)
+        if width and height:
+            self.resize(width, height)
+        return self
+    return place
+
+def _create_geometry_method(widget):
+    """Create geometry() method for QDialog/QMainWindow"""
+    def geometry(self, geom=None):
+        """Tkinter-style geometry method"""
+        if geom:
+            # Parse geometry string like "600x500" or "600x500+100+100"
+            import re
+            match = re.match(r'(\d+)x(\d+)(?:\+(\d+)\+(\d+))?', geom)
+            if match:
+                width, height, x, y = match.groups()
+                self.resize(int(width), int(height))
+                if x and y:
+                    self.move(int(x), int(y))
+        return self
+    return geometry
+
+def _create_winfo_methods(widget):
+    """Create winfo_* methods for PyQt5 widgets"""
+    def winfo_screenwidth(self):
+        from PyQt5.QtWidgets import QApplication
+        screen = QApplication.primaryScreen().geometry()
+        return screen.width()
+
+    def winfo_screenheight(self):
+        from PyQt5.QtWidgets import QApplication
+        screen = QApplication.primaryScreen().geometry()
+        return screen.height()
+
+    def winfo_children(self):
+        """Return list of child widgets"""
+        return self.findChildren(QWidget)
+
+    def update_idletasks(self):
+        """Process pending events"""
+        from PyQt5.QtWidgets import QApplication
+        QApplication.processEvents()
+
+    return winfo_screenwidth, winfo_screenheight, winfo_children, update_idletasks
+
+def _create_grab_set(widget):
+    """Create grab_set() method for QDialog"""
+    def grab_set(self):
+        """Make dialog modal (PyQt5 style)"""
+        if hasattr(self, 'setModal'):
+            self.setModal(True)
+        return self
+    return grab_set
+
+# Apply monkey patches to PyQt5 widget classes
+from PyQt5.QtWidgets import (
+    QWidget, QDialog, QLabel, QPushButton, QLineEdit, QTextEdit,
+    QComboBox, QCheckBox, QRadioButton, QFrame, QMainWindow, QGroupBox,
+    QTreeWidget, QTreeWidgetItem, QTableWidget, QScrollArea
+)
+
+for widget_class in [QWidget, QDialog, QLabel, QPushButton, QLineEdit,
+                      QTextEdit, QComboBox, QCheckBox, QRadioButton, QFrame,
+                      QTreeWidget, QTableWidget, QScrollArea]:
+    widget_class.pack = _create_pack_method(widget_class)
+    widget_class.grid = _create_grid_method(widget_class)
+    widget_class.place = _create_place_method(widget_class)
+    winfo_sw, winfo_sh, winfo_ch, update_idle = _create_winfo_methods(widget_class)
+    widget_class.winfo_screenwidth = winfo_sw
+    widget_class.winfo_screenheight = winfo_sh
+    widget_class.winfo_children = winfo_ch
+    widget_class.update_idletasks = update_idle
+
+# Add grab_set to QDialog
+QDialog.grab_set = _create_grab_set(QDialog)
+QDialog.geometry = _create_geometry_method(QDialog)
+QMainWindow.geometry = _create_geometry_method(QMainWindow)
+
+# Define QLabelFrame as alias for QGroupBox with compatible interface
+class QLabelFrame(QGroupBox):
+    """Tkinter LabelFrame compatibility wrapper for QGroupBox"""
+    def __init__(self, parent=None, text="", padding=0, **kwargs):
+        super().__init__(text, parent)
+        # PyQt5 QGroupBox doesn't have padding parameter, but we can set margins
+        if padding:
+            self.setContentsMargins(padding, padding, padding, padding)
+
+# Modify QLabel, QPushButton, QLineEdit etc. to accept tkinter-style parameters
+_original_qlabel_init = QLabel.__init__
+def _qlabel_init_wrapper(self, parent=None, text="", font=None, foreground=None, background=None, **kwargs):
+    if isinstance(parent, str):
+        # If parent is a string, it's actually the text parameter (tkinter style)
+        text = parent
+        parent = None
+    _original_qlabel_init(self, parent)
+    if text:
+        self.setText(text)
+    if font:
+        from PyQt5.QtGui import QFont
+        if isinstance(font, tuple):
+            font_family, font_size = font[0], font[1] if len(font) > 1 else 10
+            font_weight = QFont.Bold if len(font) > 2 and 'bold' in str(font[2]).lower() else QFont.Normal
+            qfont = QFont(font_family, font_size, font_weight)
+            self.setFont(qfont)
+
+QLabel.__init__ = _qlabel_init_wrapper
+
+_original_qpushbutton_init = QPushButton.__init__
+def _qpushbutton_init_wrapper(self, parent=None, text="", command=None, style=None, **kwargs):
+    if isinstance(parent, str):
+        text = parent
+        parent = None
+    _original_qpushbutton_init(self, parent)
+    if text:
+        self.setText(text)
+    if command:
+        self.clicked.connect(command)
+
+QPushButton.__init__ = _qpushbutton_init_wrapper
+
+_original_qlineedit_init = QLineEdit.__init__
+def _qlineedit_init_wrapper(self, parent=None, textvariable=None, width=None, state=None, **kwargs):
+    _original_qlineedit_init(self, parent)
+    if textvariable:
+        # Connect StringVar to QLineEdit
+        self.setText(textvariable.get())
+        self.textChanged.connect(lambda text: textvariable.set(text))
+    if width:
+        self.setMinimumWidth(width * 10)  # Approximate character width
+    if state == 'readonly':
+        self.setReadOnly(True)
+
+QLineEdit.__init__ = _qlineedit_init_wrapper
+
+_original_qcombobox_init = QComboBox.__init__
+def _qcombobox_init_wrapper(self, parent=None, textvariable=None, values=None, state=None, width=None, **kwargs):
+    _original_qcombobox_init(self, parent)
+    if values:
+        self.addItems(values)
+    if textvariable:
+        self.setCurrentText(textvariable.get())
+        self.currentTextChanged.connect(lambda text: textvariable.set(text))
+    if state == 'readonly':
+        self.setEditable(False)
+    if width:
+        self.setMinimumWidth(width * 10)
+
+QComboBox.__init__ = _qcombobox_init_wrapper
+
+_original_qframe_init = QFrame.__init__
+def _qframe_init_wrapper(self, parent=None, orient=None, padding=None, **kwargs):
+    _original_qframe_init(self, parent)
+    if orient == 'horizontal':
+        self.setFrameShape(QFrame.HLine)
+        self.setFrameShadow(QFrame.Sunken)
+    elif orient == 'vertical':
+        self.setFrameShape(QFrame.VLine)
+        self.setFrameShadow(QFrame.Sunken)
+    if padding:
+        self.setContentsMargins(padding, padding, padding, padding)
+
+QFrame.__init__ = _qframe_init_wrapper
+
+_original_qwidget_init = QWidget.__init__
+def _qwidget_init_wrapper(self, parent=None, padding=None, **kwargs):
+    _original_qwidget_init(self, parent)
+    if padding:
+        self.setContentsMargins(padding, padding, padding, padding)
+
+QWidget.__init__ = _qwidget_init_wrapper
+
+_original_qtextedit_init = QTextEdit.__init__
+def _qtextedit_init_wrapper(self, parent=None, wrap=None, width=None, height=None, state=None, **kwargs):
+    _original_qtextedit_init(self, parent)
+    if wrap == 'word':
+        from PyQt5.QtWidgets import QTextEdit
+        self.setLineWrapMode(QTextEdit.WidgetWidth)
+    if width:
+        self.setMinimumWidth(width)
+    if height:
+        self.setMinimumHeight(height)
+    if state == 'disabled':
+        self.setReadOnly(True)
+
+QTextEdit.__init__ = _qtextedit_init_wrapper
+
+# Add tkinter-style text methods to QTextEdit
+def _qtextedit_insert(self, index, text):
+    """Tkinter-style insert method for QTextEdit"""
+    if index == '1.0':
+        # Insert at beginning
+        self.setPlainText(text + self.toPlainText())
+    elif index == 'end' or index == tk.END:
+        # Insert at end
+        self.insertPlainText(text)
+    else:
+        # For other positions, just append
+        self.insertPlainText(text)
+
+def _qtextedit_get(self, start, end=None):
+    """Tkinter-style get method for QTextEdit"""
+    text = self.toPlainText()
+    if end == 'end-1c' or end == 'end':
+        # Return all text
+        return text
+    return text
+
+QTextEdit.insert = _qtextedit_insert
+QTextEdit.get = _qtextedit_get
+
+# Add END constant to tk namespace
+tk.END = 'end'
+
+# Add tkinter-style TreeView methods to QTreeWidget
+_original_qtreewidget_init = QTreeWidget.__init__
+def _qtreewidget_init_wrapper(self, parent=None, columns=None, show=None, height=None, **kwargs):
+    _original_qtreewidget_init(self, parent)
+    if columns:
+        self.setColumnCount(len(columns))
+        self.setHeaderLabels(list(columns))
+    if show == 'headings':
+        # Show only headers, no tree structure
+        pass  # QTreeWidget always shows headers by default
+    if height:
+        self.setMinimumHeight(height * 25)  # Approximate row height
+
+QTreeWidget.__init__ = _qtreewidget_init_wrapper
+
+def _qtreewidget_heading(self, column, text=None, **kwargs):
+    """Tkinter-style heading method"""
+    if isinstance(column, str):
+        # Find column index by name
+        for i in range(self.columnCount()):
+            if self.headerItem() and self.headerItem().text(i) == column:
+                column = i
+                break
+    if text:
+        if self.headerItem():
+            self.headerItem().setText(column, text)
+
+def _qtreewidget_column(self, column, width=None, **kwargs):
+    """Tkinter-style column method"""
+    if isinstance(column, str):
+        # Find column index by name
+        for i in range(self.columnCount()):
+            if self.headerItem() and self.headerItem().text(i) == column:
+                column = i
+                break
+    if width:
+        self.setColumnWidth(column, width)
+
+def _qtreewidget_insert(self, parent, index, text='', values=None, **kwargs):
+    """Tkinter-style insert method"""
+    item = QTreeWidgetItem()
+    if text:
+        item.setText(0, text)
+    if values:
+        for i, value in enumerate(values):
+            item.setText(i, str(value))
+
+    if parent == '' or parent == 'end':
+        self.addTopLevelItem(item)
+    else:
+        parent.addChild(item)
+    return item
+
+def _qtreewidget_item(self, item_id):
+    """Tkinter-style item method - returns dict with 'values' key"""
+    if isinstance(item_id, QTreeWidgetItem):
+        item = item_id
+    else:
+        # Assume it's an index or string ID
+        return {}
+
+    values = []
+    for i in range(self.columnCount()):
+        values.append(item.text(i))
+
+    return {'values': values, 'text': item.text(0)}
+
+def _qtreewidget_get_children(self, item=''):
+    """Tkinter-style get_children method"""
+    if item == '' or item is None:
+        # Get all top-level items
+        items = []
+        for i in range(self.topLevelItemCount()):
+            items.append(self.topLevelItem(i))
+        return items
+    else:
+        # Get children of specific item
+        children = []
+        for i in range(item.childCount()):
+            children.append(item.child(i))
+        return children
+
+def _qtreewidget_selection(self):
+    """Tkinter-style selection method"""
+    return self.selectedItems()
+
+def _qtreewidget_configure(self, **kwargs):
+    """Tkinter-style configure method"""
+    # Ignore yscrollcommand and other tkinter-specific options
+    pass
+
+def _qtreewidget_yview(self, *args):
+    """Tkinter-style yview method (for scrolling)"""
+    # QTreeWidget handles scrolling internally
+    pass
+
+QTreeWidget.heading = _qtreewidget_heading
+QTreeWidget.column = _qtreewidget_column
+QTreeWidget.insert = _qtreewidget_insert
+QTreeWidget.item = _qtreewidget_item
+QTreeWidget.get_children = _qtreewidget_get_children
+QTreeWidget.selection = _qtreewidget_selection
+QTreeWidget.configure = _qtreewidget_configure
+QTreeWidget.yview = _qtreewidget_yview
+
+# Add configure method to QScrollArea
+def _qscrollarea_init_wrapper(self, parent=None, orient=None, command=None, **kwargs):
+    from PyQt5.QtWidgets import QScrollArea
+    QScrollArea.__init__(self, parent)
+    # Ignore orient and command - PyQt5 handles scrolling differently
+
+def _qscrollarea_set(self, *args):
+    """Tkinter-style set method for scrollbar"""
+    pass  # QScrollArea handles this internally
+
+QScrollArea.set = _qscrollarea_set
+
+# ===== END TKINTER COMPATIBILITY LAYER =====
+
 class PMType(Enum):
     MONTHLY = "Monthly"
     ANNUAL = "Annual"
@@ -12840,42 +13261,53 @@ class AITCMMSSystem(QMainWindow):
         # Calendar picker button
         def open_calendar():
             """Open calendar dialog to pick a date"""
-            from tkcalendar import Calendar
-        
+            from PyQt5.QtWidgets import QCalendarWidget, QVBoxLayout
+            from PyQt5.QtCore import QDate
+
             # Create calendar dialog
             cal_dialog = QDialog(dialog)
             cal_dialog.setWindowTitle("Select Date")
-            cal_dialog.geometry("300x300")
-            cal_dialog.setParent(dialog)
-            cal_dialog.grab_set()
-        
+            cal_dialog.resize(400, 350)
+            cal_dialog.setModal(True)
+
+            # Create layout
+            layout = QVBoxLayout(cal_dialog)
+
             # Parse current date or use today
             try:
                 current_date = datetime.strptime(cm_date_var.get(), '%Y-%m-%d')
             except:
                 current_date = datetime.now()
-        
-            # Create calendar widget
-            cal = Calendar(cal_dialog, 
-                          selectmode='day',
-                          year=current_date.year,
-                          month=current_date.month,
-                          day=current_date.day,
-                          date_pattern='yyyy-mm-dd')
-            cal.pack(pady=20, padx=20, fill='both', expand=True)
-        
+
+            # Create calendar widget (PyQt5)
+            cal = QCalendarWidget(cal_dialog)
+            cal.setSelectedDate(QDate(current_date.year, current_date.month, current_date.day))
+            layout.addWidget(cal)
+
             def select_date():
-                cm_date_var.set(cal.get_date())
+                selected_qdate = cal.selectedDate()
+                date_str = selected_qdate.toString('yyyy-MM-dd')
+                cm_date_var.set(date_str)
                 cal_dialog.close()
-        
+
             # Buttons
             button_frame = QWidget(cal_dialog)
-            button_frame.pack(pady=10)
-            QPushButton(button_frame, text="Select", command=select_date).pack(side='left', padx=5)
-            QPushButton(button_frame, text="Today", 
-                    command=lambda: [cm_date_var.set(datetime.now().strftime('%Y-%m-%d')), 
-                                    cal_dialog.close()]).pack(side='left', padx=5)
-            QPushButton(button_frame, text="Cancel", command=cal_dialog.destroy).pack(side='left', padx=5)
+            button_layout = QHBoxLayout(button_frame)
+
+            select_btn = QPushButton("Select")
+            select_btn.clicked.connect(select_date)
+            button_layout.addWidget(select_btn)
+
+            today_btn = QPushButton("Today")
+            today_btn.clicked.connect(lambda: [cm_date_var.set(datetime.now().strftime('%Y-%m-%d')), cal_dialog.close()])
+            button_layout.addWidget(today_btn)
+
+            cancel_btn = QPushButton("Cancel")
+            cancel_btn.clicked.connect(cal_dialog.close)
+            button_layout.addWidget(cancel_btn)
+
+            layout.addWidget(button_frame)
+            cal_dialog.exec_()
     
         # Calendar button with icon
         QPushButton(date_frame, text="Pick Date", command=open_calendar).pack(side='left')
