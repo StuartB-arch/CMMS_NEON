@@ -6580,7 +6580,7 @@ class AITCMMSSystem(QMainWindow):
     def create_custom_pm_templates_tab(self):
         """Create PM Templates management tab"""
         self.pm_templates_frame = QWidget(self.notebook)
-        self.notebook.add(self.pm_templates_frame, text="PM Templates")
+        self.notebook.addTab(self.pm_templates_frame, "PM Templates")
 
         # Controls
         controls_frame = QLabelFrame(self.pm_templates_frame, text="PM Template Controls", padding=10)
@@ -6733,7 +6733,7 @@ class AITCMMSSystem(QMainWindow):
 
             # Create a Tkinter frame to host the PyQt widget
             kpi_frame = QWidget(self.notebook)
-            self.notebook.add(kpi_frame, text="📊 KPI Dashboard")
+            self.notebook.addTab(kpi_frame, "📊 KPI Dashboard")
 
             # Add instructions label
             instructions = QLabel(
@@ -6793,7 +6793,7 @@ class AITCMMSSystem(QMainWindow):
         except ImportError as e:
             # PyQt5 not available, show alternative message
             kpi_frame = QWidget(self.notebook)
-            self.notebook.add(kpi_frame, text="📊 KPI Dashboard")
+            self.notebook.addTab(kpi_frame, "📊 KPI Dashboard")
 
             error_label = QLabel(
                 kpi_frame,
@@ -8760,7 +8760,7 @@ class AITCMMSSystem(QMainWindow):
     def create_technician_info_tab(self):
         """Create an info tab for technicians"""
         info_frame = QWidget(self.notebook)
-        self.notebook.add(info_frame, text="System Info")
+        self.notebook.addTab(info_frame, "System Info")
     
         # Welcome message
         welcome_frame = QLabelFrame(info_frame, text="Welcome to AIT CMMS", padding=20)
@@ -8824,7 +8824,7 @@ class AITCMMSSystem(QMainWindow):
     def create_parts_coordinator_info_tab(self):
         """Create an info tab for parts coordinator"""
         info_frame = QWidget(self.notebook)
-        self.notebook.add(info_frame, text="System Info")
+        self.notebook.addTab(info_frame, "System Info")
 
         # Welcome message
         welcome_frame = QLabelFrame(info_frame, text="Welcome to AIT CMMS", padding=20)
@@ -9104,7 +9104,7 @@ class AITCMMSSystem(QMainWindow):
     def create_equipment_tab(self):
         """Equipment management and data import tab"""
         self.equipment_frame = QWidget(self.notebook)
-        self.notebook.add(self.equipment_frame, text="Equipment Management")
+        self.notebook.addTab(self.equipment_frame, "Equipment Management")
         
         # Controls frame
         controls_frame = QLabelFrame(self.equipment_frame, text="Equipment Controls", padding=10)
@@ -9308,7 +9308,7 @@ class AITCMMSSystem(QMainWindow):
     def create_pm_scheduling_tab(self):
         """PM Scheduling and assignment tab"""
         self.pm_schedule_frame = QWidget(self.notebook)
-        self.notebook.add(self.pm_schedule_frame, text="PM Scheduling")
+        self.notebook.addTab(self.pm_schedule_frame, "PM Scheduling")
         
         # Controls
         controls_frame = QLabelFrame(self.pm_schedule_frame, text="PM Scheduling Controls", padding=10)
@@ -9402,7 +9402,7 @@ class AITCMMSSystem(QMainWindow):
     def create_pm_completion_tab(self):
         """PM Completion entry tab"""
         self.pm_completion_frame = QWidget(self.notebook)
-        self.notebook.add(self.pm_completion_frame, text="PM Completion")
+        self.notebook.addTab(self.pm_completion_frame, "PM Completion")
         
         # Completion form
         form_frame = QLabelFrame(self.pm_completion_frame, text="PM Completion Entry", padding=15)
@@ -10194,7 +10194,7 @@ class AITCMMSSystem(QMainWindow):
     def create_cannot_find_tab(self):
         """Cannot Find Assets tab with search functionality"""
         self.cannot_find_frame = QWidget(self.notebook)
-        self.notebook.add(self.cannot_find_frame, text="Cannot Find Assets")
+        self.notebook.addTab(self.cannot_find_frame, "Cannot Find Assets")
 
         # Controls
         controls_frame = QLabelFrame(self.cannot_find_frame, text="Cannot Find Controls", padding=10)
@@ -10507,7 +10507,7 @@ class AITCMMSSystem(QMainWindow):
     def create_run_to_failure_tab(self):
         """Run to Failure Assets tab"""
         self.run_to_failure_frame = QWidget(self.notebook)
-        self.notebook.add(self.run_to_failure_frame, text="Run to Failure Assets")
+        self.notebook.addTab(self.run_to_failure_frame, "Run to Failure Assets")
     
         # Controls
         controls_frame = QLabelFrame(self.run_to_failure_frame, text="Run to Failure Controls", padding=10)
@@ -10563,7 +10563,7 @@ class AITCMMSSystem(QMainWindow):
     def create_cm_management_tab(self):
         """Enhanced Corrective Maintenance management tab with SharePoint integration and filter"""
         self.cm_frame = QWidget(self.notebook)
-        self.notebook.add(self.cm_frame, text="Corrective Maintenance")
+        self.notebook.addTab(self.cm_frame, "Corrective Maintenance")
 
         # CM controls - Enhanced with SharePoint button
         controls_frame = QLabelFrame(self.cm_frame, text="CM Controls", padding=10)
@@ -10973,7 +10973,7 @@ class AITCMMSSystem(QMainWindow):
     def create_analytics_dashboard_tab(self):
         """Analytics and dashboard tab"""
         self.analytics_frame = QWidget(self.notebook)
-        self.notebook.add(self.analytics_frame, text="Analytics Dashboard")
+        self.notebook.addTab(self.analytics_frame, "Analytics Dashboard")
         
         # Analytics controls
         controls_frame = QLabelFrame(self.analytics_frame, text="Analytics Controls", padding=10)
@@ -16932,7 +16932,7 @@ class AITCMMSSystem(QMainWindow):
     def create_pm_history_search_tab(self):
         """PM History Search tab for comprehensive equipment completion information"""
         self.pm_history_frame = QWidget(self.notebook)
-        self.notebook.add(self.pm_history_frame, text="PM History Search")
+        self.notebook.addTab(self.pm_history_frame, "PM History Search")
     
         # Search controls
         search_controls_frame = QLabelFrame(self.pm_history_frame, text="Search Equipment PM History", padding=15)
