@@ -5797,31 +5797,19 @@ class AITCMMSSystem(QMainWindow):
         self.root.setWindowTitle("AIT Complete CMMS - Computerized Maintenance Management System")
 
         # ===== UI SCALING FOR BETTER READABILITY =====
-        # Increase UI scaling to make text and widgets larger
-        # This helps on high-DPI displays and makes the app more readable
-        try:
-            # Scale up all UI elements by 50% for better readability
-            self.root.tk.call('tk', 'scaling', 2.0)
-        except:
-            pass
+        # PyQt5 handles high-DPI scaling automatically via Qt::AA_EnableHighDpiScaling
+        # which should be set in the main application startup if needed
 
-        # Get screen dimensions and make window fullscreen
-        screen_width = self.root.winfo_screenwidth()
-        screen_height = self.root.winfo_screenheight()
+        # Get screen dimensions and make window fullscreen (PyQt5)
+        screen = QApplication.primaryScreen().geometry()
+        screen_width = screen.width()
+        screen_height = screen.height()
 
-        # Set window to fullscreen for better readability
-        self.root.geometry(f"{screen_width}x{screen_height}+0+0")
+        # Set window to fullscreen for better readability (PyQt5)
+        self.setGeometry(0, 0, screen_width, screen_height)
 
-        # Try different maximize methods based on platform
-        try:
-            self.root.state('zoomed')  # Works on Windows
-        except:
-            try:
-                # For Linux/Unix systems
-                self.root.attributes('-zoomed', True)
-            except:
-                # If all else fails, just make it fill the screen
-                self.root.geometry(f"{screen_width}x{screen_height}+0+0")
+        # Maximize the window (works on all platforms in PyQt5)
+        self.showMaximized()
 
         # ===== ROLE-BASED ACCESS CONTROL =====
         self.current_user_role = None  # Will be set by login
