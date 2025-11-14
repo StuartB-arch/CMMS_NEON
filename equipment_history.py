@@ -8,8 +8,13 @@ Provides comprehensive equipment history tracking and timeline visualization inc
 - Equipment health scoring
 """
 
-import tkinter as tk
-from tkinter import ttk, messagebox
+from PyQt5.QtWidgets import (
+    QDialog, QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton,
+    QComboBox, QTabWidget, QTreeWidget, QTreeWidgetItem, QTextEdit,
+    QMessageBox, QGroupBox, QHeaderView
+)
+from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QFont
 from datetime import datetime, timedelta
 from typing import List, Dict, Optional
 from collections import defaultdict
@@ -534,7 +539,7 @@ class EquipmentHistory:
             raise e
 
 
-class EquipmentHistoryViewer:
+class EquipmentHistoryViewer(QDialog):
     """GUI for viewing equipment history timeline"""
 
     def __init__(self, parent, conn, bfm_no: str):
@@ -542,129 +547,137 @@ class EquipmentHistoryViewer:
         Initialize history viewer window
 
         Args:
-            parent: Parent tkinter window
+            parent: Parent Qt window
             conn: Database connection
             bfm_no: BFM equipment number
         """
+        super().__init__(parent)
         self.conn = conn
         self.bfm_no = bfm_no
         self.history_manager = EquipmentHistory(conn)
 
-        # Create window
-        self.window = tk.Toplevel(parent)
-        self.window.title(f"Equipment History - {bfm_no}")
-        self.window.geometry("1200x800")
-
-        # Make window modal
-        self.window.transient(parent)
-        self.window.grab_set()
+        # Set window properties
+        self.setWindowTitle(f"Equipment History - {bfm_no}")
+        self.resize(1200, 800)
+        self.setWindowModality(Qt.ApplicationModal)
 
         self._create_ui()
         self._load_history()
 
     def _create_ui(self):
         """Create user interface"""
-        # Header
-        header_frame = ttk.Frame(self.window)
-        header_frame.pack(fill='x', padx=10, pady=10)
+        # Main layout
+        main_layout = QVBoxLayout(self)
 
-        ttk.Label(header_frame, text=f"Equipment History: {self.bfm_no}",
-                 font=('Arial', 14, 'bold')).pack(side='left')
+        # Header
+        header_widget = QWidget()
+        header_layout = QHBoxLayout(header_widget)
+        header_layout.setContentsMargins(0, 0, 0, 0)
+
+        header_label = QLabel(f"Equipment History: {self.bfm_no}")
+        header_font = QFont('Arial', 14, QFont.Bold)
+        header_label.setFont(header_font)
+        header_layout.addWidget(header_label)
+        header_layout.addStretch()
+
+        main_layout.addWidget(header_widget)
 
         # Filter frame
-        filter_frame = ttk.LabelFrame(self.window, text="Filters")
-        filter_frame.pack(fill='x', padx=10, pady=5)
+        filter_group = QGroupBox("Filters")
+        filter_layout = QHBoxLayout()
 
-        ttk.Label(filter_frame, text="Show last:").pack(side='left', padx=5)
+        filter_layout.addWidget(QLabel("Show last:"))
 
-        self.days_var = tk.StringVar(value="365")
-        days_combo = ttk.Combobox(filter_frame, textvariable=self.days_var,
-                                  values=["30", "90", "180", "365", "730"],
-                                  width=10, state='readonly')
-        days_combo.pack(side='left', padx=5)
-        days_combo.bind('<<ComboboxSelected>>', lambda e: self._load_history())
+        self.days_combo = QComboBox()
+        self.days_combo.addItems(["30", "90", "180", "365", "730"])
+        self.days_combo.setCurrentText("365")
+        self.days_combo.currentTextChanged.connect(self._load_history)
+        filter_layout.addWidget(self.days_combo)
 
-        ttk.Label(filter_frame, text="days").pack(side='left')
+        filter_layout.addWidget(QLabel("days"))
+        filter_layout.addStretch()
 
-        ttk.Button(filter_frame, text="Refresh",
-                  command=self._load_history).pack(side='right', padx=5)
+        refresh_btn = QPushButton("Refresh")
+        refresh_btn.clicked.connect(self._load_history)
+        filter_layout.addWidget(refresh_btn)
+
+        filter_group.setLayout(filter_layout)
+        main_layout.addWidget(filter_group)
 
         # Notebook for different views
-        notebook = ttk.Notebook(self.window)
-        notebook.pack(fill='both', expand=True, padx=10, pady=5)
+        self.tab_widget = QTabWidget()
 
         # Timeline tab
-        timeline_frame = ttk.Frame(notebook)
-        notebook.add(timeline_frame, text="Timeline")
-        self._create_timeline_view(timeline_frame)
+        timeline_widget = QWidget()
+        self._create_timeline_view(timeline_widget)
+        self.tab_widget.addTab(timeline_widget, "Timeline")
 
         # Health Score tab
-        health_frame = ttk.Frame(notebook)
-        notebook.add(health_frame, text="Health Score")
-        self._create_health_view(health_frame)
+        health_widget = QWidget()
+        self._create_health_view(health_widget)
+        self.tab_widget.addTab(health_widget, "Health Score")
 
         # Summary tab
-        summary_frame = ttk.Frame(notebook)
-        notebook.add(summary_frame, text="Summary")
-        self._create_summary_view(summary_frame)
+        summary_widget = QWidget()
+        self._create_summary_view(summary_widget)
+        self.tab_widget.addTab(summary_widget, "Summary")
+
+        main_layout.addWidget(self.tab_widget)
 
     def _create_timeline_view(self, parent):
         """Create timeline view"""
-        # Scrolled text widget for timeline
-        scroll_frame = ttk.Frame(parent)
-        scroll_frame.pack(fill='both', expand=True)
+        layout = QVBoxLayout(parent)
 
-        scrollbar = ttk.Scrollbar(scroll_frame)
-        scrollbar.pack(side='right', fill='y')
+        # Create tree widget for timeline
+        self.timeline_tree = QTreeWidget()
+        self.timeline_tree.setHeaderLabels(['Date', 'Category', 'Event', 'Details'])
 
-        self.timeline_tree = ttk.Treeview(scroll_frame, columns=('Date', 'Category', 'Event', 'Details'),
-                                          show='tree headings', yscrollcommand=scrollbar.set)
-        self.timeline_tree.pack(side='left', fill='both', expand=True)
-        scrollbar.config(command=self.timeline_tree.yview)
+        # Configure column widths
+        header = self.timeline_tree.header()
+        header.resizeSection(0, 100)
+        header.resizeSection(1, 150)
+        header.resizeSection(2, 250)
+        header.resizeSection(3, 400)
+        header.setStretchLastSection(True)
 
-        # Configure columns
-        self.timeline_tree.heading('#0', text='')
-        self.timeline_tree.heading('Date', text='Date')
-        self.timeline_tree.heading('Category', text='Category')
-        self.timeline_tree.heading('Event', text='Event')
-        self.timeline_tree.heading('Details', text='Details')
-
-        self.timeline_tree.column('#0', width=30)
-        self.timeline_tree.column('Date', width=100)
-        self.timeline_tree.column('Category', width=150)
-        self.timeline_tree.column('Event', width=250)
-        self.timeline_tree.column('Details', width=400)
+        layout.addWidget(self.timeline_tree)
 
     def _create_health_view(self, parent):
         """Create health score view"""
-        self.health_text = tk.Text(parent, wrap='word', height=20, width=80)
-        self.health_text.pack(fill='both', expand=True, padx=10, pady=10)
+        layout = QVBoxLayout(parent)
+
+        self.health_text = QTextEdit()
+        self.health_text.setReadOnly(True)
+        layout.addWidget(self.health_text)
 
     def _create_summary_view(self, parent):
         """Create summary statistics view"""
-        self.summary_text = tk.Text(parent, wrap='word', height=20, width=80)
-        self.summary_text.pack(fill='both', expand=True, padx=10, pady=10)
+        layout = QVBoxLayout(parent)
+
+        self.summary_text = QTextEdit()
+        self.summary_text.setReadOnly(True)
+        layout.addWidget(self.summary_text)
 
     def _load_history(self):
         """Load and display equipment history"""
         try:
-            days = int(self.days_var.get())
+            days = int(self.days_combo.currentText())
 
             # Load timeline events
             events = self.history_manager.get_timeline_events(self.bfm_no, days)
 
             # Clear timeline
-            for item in self.timeline_tree.get_children():
-                self.timeline_tree.delete(item)
+            self.timeline_tree.clear()
 
             # Populate timeline
             for event in events:
-                self.timeline_tree.insert('', 'end', values=(
-                    event['date'],
+                item = QTreeWidgetItem([
+                    str(event['date']),
                     event['category'],
                     event['title'],
                     event['details']
-                ))
+                ])
+                self.timeline_tree.addTopLevelItem(item)
 
             # Load health score
             health = self.history_manager.get_equipment_health_score(self.bfm_no)
@@ -674,12 +687,10 @@ class EquipmentHistoryViewer:
             self._load_summary()
 
         except Exception as e:
-            messagebox.showerror("Error", f"Error loading history: {str(e)}")
+            QMessageBox.critical(self, "Error", f"Error loading history: {str(e)}")
 
     def _display_health_score(self, health: Dict):
         """Display health score information"""
-        self.health_text.delete('1.0', 'end')
-
         score = health['health_score']
         color = 'green' if score >= 80 else 'orange' if score >= 60 else 'red'
 
@@ -702,13 +713,11 @@ RECOMMENDATIONS:
         if not health['recommendations']:
             text += "- No issues detected. Equipment is performing well.\n"
 
-        self.health_text.insert('1.0', text)
+        self.health_text.setPlainText(text)
 
     def _load_summary(self):
         """Load and display summary statistics"""
-        self.summary_text.delete('1.0', 'end')
-
-        days = int(self.days_var.get())
+        days = int(self.days_combo.currentText())
         start_date = (datetime.now() - timedelta(days=days)).strftime('%Y-%m-%d')
         history = self.history_manager.get_complete_history(self.bfm_no, start_date=start_date)
 
@@ -741,7 +750,7 @@ PARTS:
 TOTAL MAINTENANCE HOURS: {total_pm_hours + total_cm_hours:.1f}
 """
 
-        self.summary_text.insert('1.0', text)
+        self.summary_text.setPlainText(text)
 
 
 def show_equipment_history(parent, conn, bfm_no: str):
@@ -749,8 +758,9 @@ def show_equipment_history(parent, conn, bfm_no: str):
     Show equipment history viewer window
 
     Args:
-        parent: Parent tkinter window
+        parent: Parent Qt window
         conn: Database connection
         bfm_no: BFM equipment number
     """
-    EquipmentHistoryViewer(parent, conn, bfm_no)
+    viewer = EquipmentHistoryViewer(parent, conn, bfm_no)
+    viewer.exec_()

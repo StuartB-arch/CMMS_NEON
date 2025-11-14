@@ -3,12 +3,14 @@ Password Change Interface for All Users
 Allows users to change their own passwords
 """
 
-import tkinter as tk
-from tkinter import ttk, messagebox
+from PyQt5.QtWidgets import (QDialog, QLabel, QLineEdit, QPushButton, QFrame,
+                             QVBoxLayout, QHBoxLayout, QGridLayout, QMessageBox)
+from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QFont
 from database_utils import db_pool, UserManager, AuditLogger
 
 
-class PasswordChangeDialog:
+class PasswordChangeDialog(QDialog):
     """Dialog for users to change their own password"""
 
     def __init__(self, parent, current_user, username):
@@ -20,118 +22,163 @@ class PasswordChangeDialog:
             current_user: Current user's full name (for audit logging)
             username: Current user's username
         """
-        self.parent = parent
+        super().__init__(parent)
+        self.parent_window = parent
         self.current_user = current_user
         self.username = username
-        self.dialog = None
+        self.setup_ui()
 
-    def show(self):
-        """Show the password change dialog"""
-        self.dialog = tk.Toplevel(self.parent)
-        self.dialog.title("Change Password")
-        self.dialog.geometry("450x300")
-        self.dialog.transient(self.parent)
-        self.dialog.grab_set()  # Make dialog modal
+    def setup_ui(self):
+        """Setup the user interface"""
+        self.setWindowTitle("Change Password")
+        self.setFixedSize(450, 300)
+        self.setModal(True)  # Make dialog modal
 
         # Center the dialog on parent window
-        self.dialog.update_idletasks()
-        x = (self.parent.winfo_width() // 2) - (450 // 2) + self.parent.winfo_x()
-        y = (self.parent.winfo_height() // 2) - (300 // 2) + self.parent.winfo_y()
-        self.dialog.geometry(f"450x300+{x}+{y}")
+        if self.parent_window:
+            parent_geo = self.parent_window.geometry()
+            x = parent_geo.x() + (parent_geo.width() - 450) // 2
+            y = parent_geo.y() + (parent_geo.height() - 300) // 2
+            self.move(x, y)
+
+        # Main layout
+        main_layout = QVBoxLayout()
+        main_layout.setContentsMargins(20, 20, 20, 20)
+        main_layout.setSpacing(10)
+        self.setLayout(main_layout)
 
         # Header
-        header_frame = ttk.Frame(self.dialog)
-        header_frame.pack(fill='x', padx=20, pady=20)
+        header_frame = QFrame()
+        header_layout = QVBoxLayout()
+        header_layout.setSpacing(5)
+        header_frame.setLayout(header_layout)
 
-        ttk.Label(header_frame, text="Change Your Password",
-                  font=('Arial', 14, 'bold')).pack()
+        title_label = QLabel("Change Your Password")
+        title_label.setFont(QFont('Arial', 14, QFont.Bold))
+        title_label.setAlignment(Qt.AlignCenter)
+        header_layout.addWidget(title_label)
 
-        ttk.Label(header_frame, text=f"User: {self.username}",
-                  font=('Arial', 10)).pack(pady=(5, 0))
+        user_label = QLabel(f"User: {self.username}")
+        user_label.setFont(QFont('Arial', 10))
+        user_label.setAlignment(Qt.AlignCenter)
+        header_layout.addWidget(user_label)
+
+        main_layout.addWidget(header_frame)
 
         # Form frame
-        form_frame = ttk.Frame(self.dialog)
-        form_frame.pack(fill='both', expand=True, padx=20, pady=10)
+        form_frame = QFrame()
+        form_layout = QGridLayout()
+        form_layout.setVerticalSpacing(10)
+        form_layout.setHorizontalSpacing(10)
+        form_frame.setLayout(form_layout)
 
         # Current Password
-        ttk.Label(form_frame, text="Current Password:").grid(row=0, column=0, sticky='w', pady=10)
-        self.current_password_entry = ttk.Entry(form_frame, show='*', width=30)
-        self.current_password_entry.grid(row=0, column=1, pady=10, padx=(10, 0))
+        form_layout.addWidget(QLabel("Current Password:"), 0, 0, Qt.AlignLeft)
+        self.current_password_entry = QLineEdit()
+        self.current_password_entry.setEchoMode(QLineEdit.Password)
+        self.current_password_entry.setMinimumWidth(200)
+        form_layout.addWidget(self.current_password_entry, 0, 1)
 
         # New Password
-        ttk.Label(form_frame, text="New Password:").grid(row=1, column=0, sticky='w', pady=10)
-        self.new_password_entry = ttk.Entry(form_frame, show='*', width=30)
-        self.new_password_entry.grid(row=1, column=1, pady=10, padx=(10, 0))
+        form_layout.addWidget(QLabel("New Password:"), 1, 0, Qt.AlignLeft)
+        self.new_password_entry = QLineEdit()
+        self.new_password_entry.setEchoMode(QLineEdit.Password)
+        self.new_password_entry.setMinimumWidth(200)
+        form_layout.addWidget(self.new_password_entry, 1, 1)
 
         # Confirm New Password
-        ttk.Label(form_frame, text="Confirm New Password:").grid(row=2, column=0, sticky='w', pady=10)
-        self.confirm_password_entry = ttk.Entry(form_frame, show='*', width=30)
-        self.confirm_password_entry.grid(row=2, column=1, pady=10, padx=(10, 0))
+        form_layout.addWidget(QLabel("Confirm New Password:"), 2, 0, Qt.AlignLeft)
+        self.confirm_password_entry = QLineEdit()
+        self.confirm_password_entry.setEchoMode(QLineEdit.Password)
+        self.confirm_password_entry.setMinimumWidth(200)
+        form_layout.addWidget(self.confirm_password_entry, 2, 1)
 
-        # Password requirements label
-        requirements_frame = ttk.Frame(self.dialog)
-        requirements_frame.pack(fill='x', padx=20, pady=5)
+        main_layout.addWidget(form_frame)
 
-        ttk.Label(requirements_frame, text="Password Requirements:",
-                  font=('Arial', 9, 'bold')).pack(anchor='w')
-        ttk.Label(requirements_frame, text="• Minimum 4 characters",
-                  font=('Arial', 8), foreground='gray').pack(anchor='w')
-        ttk.Label(requirements_frame, text="• Avoid using common passwords",
-                  font=('Arial', 8), foreground='gray').pack(anchor='w')
+        # Password requirements
+        requirements_frame = QFrame()
+        requirements_layout = QVBoxLayout()
+        requirements_layout.setSpacing(2)
+        requirements_frame.setLayout(requirements_layout)
+
+        req_title = QLabel("Password Requirements:")
+        req_title.setFont(QFont('Arial', 9, QFont.Bold))
+        requirements_layout.addWidget(req_title)
+
+        req1 = QLabel("• Minimum 4 characters")
+        req1.setFont(QFont('Arial', 8))
+        req1.setStyleSheet("color: gray")
+        requirements_layout.addWidget(req1)
+
+        req2 = QLabel("• Avoid using common passwords")
+        req2.setFont(QFont('Arial', 8))
+        req2.setStyleSheet("color: gray")
+        requirements_layout.addWidget(req2)
+
+        main_layout.addWidget(requirements_frame)
 
         # Buttons
-        button_frame = ttk.Frame(self.dialog)
-        button_frame.pack(fill='x', padx=20, pady=20)
+        button_frame = QFrame()
+        button_layout = QHBoxLayout()
+        button_layout.setSpacing(5)
+        button_frame.setLayout(button_layout)
 
-        ttk.Button(button_frame, text="Change Password",
-                   command=self.change_password).pack(side='left', padx=5)
-        ttk.Button(button_frame, text="Cancel",
-                   command=self.dialog.destroy).pack(side='left', padx=5)
+        change_btn = QPushButton("Change Password")
+        change_btn.clicked.connect(self.change_password)
+        button_layout.addWidget(change_btn)
+
+        cancel_btn = QPushButton("Cancel")
+        cancel_btn.clicked.connect(self.close)
+        button_layout.addWidget(cancel_btn)
+
+        button_layout.addStretch()
+
+        main_layout.addWidget(button_frame)
 
         # Focus on current password field
-        self.current_password_entry.focus()
+        self.current_password_entry.setFocus()
 
-        # Bind Enter key to change password
-        self.dialog.bind('<Return>', lambda e: self.change_password())
-        self.dialog.bind('<Escape>', lambda e: self.dialog.destroy())
+    def keyPressEvent(self, event):
+        """Handle key press events"""
+        if event.key() == Qt.Key_Return or event.key() == Qt.Key_Enter:
+            self.change_password()
+        elif event.key() == Qt.Key_Escape:
+            self.close()
+        else:
+            super().keyPressEvent(event)
 
     def change_password(self):
         """Handle password change"""
-        current_password = self.current_password_entry.get().strip()
-        new_password = self.new_password_entry.get().strip()
-        confirm_password = self.confirm_password_entry.get().strip()
+        current_password = self.current_password_entry.text().strip()
+        new_password = self.new_password_entry.text().strip()
+        confirm_password = self.confirm_password_entry.text().strip()
 
         # Validate inputs
         if not current_password:
-            messagebox.showerror("Validation Error", "Please enter your current password",
-                                 parent=self.dialog)
-            self.current_password_entry.focus()
+            QMessageBox.critical(self, "Validation Error", "Please enter your current password")
+            self.current_password_entry.setFocus()
             return
 
         if not new_password:
-            messagebox.showerror("Validation Error", "Please enter a new password",
-                                 parent=self.dialog)
-            self.new_password_entry.focus()
+            QMessageBox.critical(self, "Validation Error", "Please enter a new password")
+            self.new_password_entry.setFocus()
             return
 
         if len(new_password) < 4:
-            messagebox.showerror("Validation Error", "New password must be at least 4 characters long",
-                                 parent=self.dialog)
-            self.new_password_entry.focus()
+            QMessageBox.critical(self, "Validation Error", "New password must be at least 4 characters long")
+            self.new_password_entry.setFocus()
             return
 
         if new_password != confirm_password:
-            messagebox.showerror("Validation Error", "New passwords do not match",
-                                 parent=self.dialog)
-            self.confirm_password_entry.delete(0, tk.END)
-            self.confirm_password_entry.focus()
+            QMessageBox.critical(self, "Validation Error", "New passwords do not match")
+            self.confirm_password_entry.clear()
+            self.confirm_password_entry.setFocus()
             return
 
         if current_password == new_password:
-            messagebox.showwarning("Validation Warning",
-                                   "New password must be different from current password",
-                                   parent=self.dialog)
-            self.new_password_entry.focus()
+            QMessageBox.warning(self, "Validation Warning",
+                               "New password must be different from current password")
+            self.new_password_entry.setFocus()
             return
 
         # Attempt to change password
@@ -152,19 +199,18 @@ class PasswordChangeDialog:
                         notes="User changed their own password"
                     )
 
-                    messagebox.showinfo("Success", message, parent=self.dialog)
-                    self.dialog.destroy()
+                    QMessageBox.information(self, "Success", message)
+                    self.close()
                 else:
-                    messagebox.showerror("Error", message, parent=self.dialog)
+                    QMessageBox.critical(self, "Error", message)
                     # Clear password fields if current password was wrong
                     if "incorrect" in message.lower():
-                        self.current_password_entry.delete(0, tk.END)
-                        self.current_password_entry.focus()
+                        self.current_password_entry.clear()
+                        self.current_password_entry.setFocus()
 
         except Exception as e:
-            messagebox.showerror("Database Error",
-                                 f"Failed to change password: {str(e)}",
-                                 parent=self.dialog)
+            QMessageBox.critical(self, "Database Error",
+                               f"Failed to change password: {str(e)}")
             print(f"Password change error: {e}")
 
 
@@ -178,4 +224,4 @@ def show_password_change_dialog(parent, current_user, username):
         username: Current user's username
     """
     dialog = PasswordChangeDialog(parent, current_user, username)
-    dialog.show()
+    dialog.exec_()

@@ -1,14 +1,19 @@
 """
 AIT CMMS - MRO Stock Management Module
-Add this to your existing AIT_CMMS_REV3.py file
+Migrated to PyQt5 from tkinter
 """
 
-import tkinter as tk
-from tkinter import ttk, messagebox, filedialog
-#import sqlite3
+from PyQt5.QtWidgets import (
+    QWidget, QDialog, QMainWindow, QVBoxLayout, QHBoxLayout, QGridLayout,
+    QLabel, QPushButton, QLineEdit, QComboBox, QTreeWidget, QTreeWidgetItem,
+    QTextEdit, QMessageBox, QFileDialog, QGroupBox, QScrollArea, QTabWidget,
+    QHeaderView, QFrame, QSplitter, QApplication
+)
+from PyQt5.QtCore import Qt, pyqtSignal, QTimer
+from PyQt5.QtGui import QPixmap, QImage, QFont, QColor
 from datetime import datetime
 import os
-from PIL import Image, ImageTk
+from PIL import Image
 import shutil
 import csv
 import io
@@ -17,20 +22,16 @@ from database_utils import db_pool
 class MROStockManager:
     """MRO (Maintenance, Repair, Operations) Stock Management"""
 
-
-    
-    
-    
     def __init__(self, parent_app):
         self.parent_app = parent_app
         self.conn = parent_app.conn
         self.root = parent_app.root
         self.init_mro_database()
-        
+
     def init_mro_database(self):
         """Initialize MRO inventory table"""
         cursor = self.conn.cursor()
-        
+
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS mro_inventory (
                 id SERIAL PRIMARY KEY,
@@ -214,196 +215,195 @@ class MROStockManager:
 
         self.conn.commit()
         print("MRO inventory database initialized with performance indexes")
-    
+
     def create_mro_tab(self, notebook):
         """Create MRO Stock Management tab"""
-        mro_frame = ttk.Frame(notebook)
-        notebook.add(mro_frame, text='MRO Stock')
-        
+        mro_frame = QWidget()
+        main_layout = QVBoxLayout(mro_frame)
+
         # Top controls frame
-        controls_frame = ttk.LabelFrame(mro_frame, text="MRO Stock Controls", padding=10)
-        controls_frame.pack(fill='x', padx=10, pady=5)
-        
+        controls_group = QGroupBox("MRO Stock Controls")
+        controls_layout = QVBoxLayout()
+
         # Buttons row 1
-        btn_frame1 = ttk.Frame(controls_frame)
-        btn_frame1.pack(fill='x', pady=5)
-        
-        ttk.Button(btn_frame1, text="➕ Add New Part", 
-                  command=self.add_part_dialog, width=20).pack(side='left', padx=5)
-        ttk.Button(btn_frame1, text="✏️ Edit Selected Part", 
-                  command=self.edit_selected_part, width=20).pack(side='left', padx=5)
-        ttk.Button(btn_frame1, text="🗑️ Delete Selected Part", 
-                  command=self.delete_selected_part, width=20).pack(side='left', padx=5)
-        ttk.Button(btn_frame1, text="📋 View Full Details", 
-                  command=self.view_part_details, width=20).pack(side='left', padx=5)
-        ttk.Button(btn_frame1, text="📊 Parts Usage Report", 
-                  command=self.show_parts_usage_report, width=20).pack(side='left', padx=5)
-        
+        btn_layout1 = QHBoxLayout()
+
+        add_btn = QPushButton("Add New Part")
+        add_btn.clicked.connect(self.add_part_dialog)
+        btn_layout1.addWidget(add_btn)
+
+        edit_btn = QPushButton("Edit Selected Part")
+        edit_btn.clicked.connect(self.edit_selected_part)
+        btn_layout1.addWidget(edit_btn)
+
+        delete_btn = QPushButton("Delete Selected Part")
+        delete_btn.clicked.connect(self.delete_selected_part)
+        btn_layout1.addWidget(delete_btn)
+
+        details_btn = QPushButton("View Full Details")
+        details_btn.clicked.connect(self.view_part_details)
+        btn_layout1.addWidget(details_btn)
+
+        usage_btn = QPushButton("Parts Usage Report")
+        usage_btn.clicked.connect(self.show_parts_usage_report)
+        btn_layout1.addWidget(usage_btn)
+
+        btn_layout1.addStretch()
+        controls_layout.addLayout(btn_layout1)
+
         # Buttons row 2
-        btn_frame2 = ttk.Frame(controls_frame)
-        btn_frame2.pack(fill='x', pady=5)
-        
-        ttk.Button(btn_frame2, text="📥 Import from File", 
-                  command=self.import_from_file, width=20).pack(side='left', padx=5)
-        ttk.Button(btn_frame2, text="📤 Export to CSV", 
-                  command=self.export_to_csv, width=20).pack(side='left', padx=5)
-        ttk.Button(btn_frame2, text="📊 Stock Report", 
-                  command=self.generate_stock_report, width=20).pack(side='left', padx=5)
-        ttk.Button(btn_frame2, text="⚠️ Low Stock Alert",
-                  command=self.show_low_stock, width=20).pack(side='left', padx=5)
-        ttk.Button(btn_frame2, text="🔄 Migrate Photos to DB",
-                  command=self.migrate_photos_to_database, width=20).pack(side='left', padx=5)
+        btn_layout2 = QHBoxLayout()
+
+        import_btn = QPushButton("Import from File")
+        import_btn.clicked.connect(self.import_from_file)
+        btn_layout2.addWidget(import_btn)
+
+        export_btn = QPushButton("Export to CSV")
+        export_btn.clicked.connect(self.export_to_csv)
+        btn_layout2.addWidget(export_btn)
+
+        report_btn = QPushButton("Stock Report")
+        report_btn.clicked.connect(self.generate_stock_report)
+        btn_layout2.addWidget(report_btn)
+
+        low_stock_btn = QPushButton("Low Stock Alert")
+        low_stock_btn.clicked.connect(self.show_low_stock)
+        btn_layout2.addWidget(low_stock_btn)
+
+        migrate_btn = QPushButton("Migrate Photos to DB")
+        migrate_btn.clicked.connect(self.migrate_photos_to_database)
+        btn_layout2.addWidget(migrate_btn)
+
+        btn_layout2.addStretch()
+        controls_layout.addLayout(btn_layout2)
+
+        controls_group.setLayout(controls_layout)
+        main_layout.addWidget(controls_group)
 
         # Search and filter frame
-        search_frame = ttk.LabelFrame(mro_frame, text="Search & Filter", padding=10)
-        search_frame.pack(fill='x', padx=10, pady=5)
-        
-        # Search bar
-        ttk.Label(search_frame, text="Search:").pack(side='left', padx=5)
-        self.mro_search_var = tk.StringVar()
-        self.mro_search_var.trace('w', self.filter_mro_list)
-        ttk.Entry(search_frame, textvariable=self.mro_search_var, 
-                 width=40).pack(side='left', padx=5)
-        
-        # Filter by category
-        ttk.Label(search_frame, text="System:").pack(side='left', padx=5)
-        self.mro_system_filter = tk.StringVar(value='All')
-        system_combo = ttk.Combobox(search_frame, textvariable=self.mro_system_filter,
-                                    values=['All', 'Mechanical', 'Electrical', 'Pneumatic', 'Hydraulic'],
-                                    width=15, state='readonly')
-        system_combo.pack(side='left', padx=5)
-        system_combo.bind('<<ComboboxSelected>>', self.filter_mro_list)
-        
-        # Status filter
-        ttk.Label(search_frame, text="Status:").pack(side='left', padx=5)
-        self.mro_status_filter = tk.StringVar(value='Active')
-        status_combo = ttk.Combobox(search_frame, textvariable=self.mro_status_filter,
-                                    values=['All', 'Active', 'Inactive', 'Low Stock'],
-                                    width=15, state='readonly')
-        status_combo.pack(side='left', padx=5)
-        status_combo.bind('<<ComboboxSelected>>', self.filter_mro_list)
+        search_group = QGroupBox("Search & Filter")
+        search_layout = QHBoxLayout()
 
-        # Location filter
-        ttk.Label(search_frame, text="Location:").pack(side='left', padx=5)
-        self.mro_location_filter = tk.StringVar(value='All')
-        self.location_combo = ttk.Combobox(search_frame, textvariable=self.mro_location_filter,
-                                           values=['All'],
-                                           width=15, state='readonly')
-        self.location_combo.pack(side='left', padx=5)
-        self.location_combo.bind('<<ComboboxSelected>>', self.filter_mro_list)
+        search_layout.addWidget(QLabel("Search:"))
+        self.mro_search_entry = QLineEdit()
+        self.mro_search_entry.textChanged.connect(self.filter_mro_list)
+        search_layout.addWidget(self.mro_search_entry)
 
-        ttk.Button(search_frame, text="🔄 Refresh",
-                  command=self.refresh_mro_list).pack(side='left', padx=5)
-        
+        search_layout.addWidget(QLabel("System:"))
+        self.mro_system_filter = QComboBox()
+        self.mro_system_filter.addItems(['All', 'Mechanical', 'Electrical', 'Pneumatic', 'Hydraulic'])
+        self.mro_system_filter.currentTextChanged.connect(self.filter_mro_list)
+        search_layout.addWidget(self.mro_system_filter)
+
+        search_layout.addWidget(QLabel("Status:"))
+        self.mro_status_filter = QComboBox()
+        self.mro_status_filter.addItems(['Active', 'All', 'Inactive', 'Low Stock'])
+        self.mro_status_filter.currentTextChanged.connect(self.filter_mro_list)
+        search_layout.addWidget(self.mro_status_filter)
+
+        search_layout.addWidget(QLabel("Location:"))
+        self.mro_location_filter = QComboBox()
+        self.mro_location_filter.addItems(['All'])
+        self.mro_location_filter.currentTextChanged.connect(self.filter_mro_list)
+        search_layout.addWidget(self.mro_location_filter)
+
+        refresh_btn = QPushButton("Refresh")
+        refresh_btn.clicked.connect(self.refresh_mro_list)
+        search_layout.addWidget(refresh_btn)
+
+        search_layout.addStretch()
+        search_group.setLayout(search_layout)
+        main_layout.addWidget(search_group)
+
         # Inventory list
-        list_frame = ttk.LabelFrame(mro_frame, text="MRO Inventory", padding=10)
-        list_frame.pack(fill='both', expand=True, padx=10, pady=5)
-        
+        list_group = QGroupBox("MRO Inventory")
+        list_layout = QVBoxLayout()
+
         # Create treeview
-        columns = ('Part Number', 'Name', 'Model', 'Equipment', 'System', 'Qty', 
-                  'Min Stock', 'Unit', 'Price', 'Location', 'Status')
-        self.mro_tree = ttk.Treeview(list_frame, columns=columns, show='headings', height=20)
-        
+        self.mro_tree = QTreeWidget()
+        columns = ['Part Number', 'Name', 'Model', 'Equipment', 'System', 'Qty',
+                  'Min Stock', 'Unit', 'Price', 'Location', 'Status']
+        self.mro_tree.setColumnCount(len(columns))
+        self.mro_tree.setHeaderLabels(columns)
+
         # Configure columns
-        column_widths = {
-            'Part Number': 120,
-            'Name': 200,
-            'Model': 100,
-            'Equipment': 120,
-            'System': 100,
-            'Qty': 70,
-            'Min Stock': 80,
-            'Unit': 60,
-            'Price': 80,
-            'Location': 100,
-            'Status': 80
-        }
-        
-        for col in columns:
-            self.mro_tree.heading(col, text=col, command=lambda c=col: self.sort_mro_column(c))
-            self.mro_tree.column(col, width=column_widths[col], anchor='center')
-        
-        # Scrollbars
-        vsb = ttk.Scrollbar(list_frame, orient='vertical', command=self.mro_tree.yview)
-        hsb = ttk.Scrollbar(list_frame, orient='horizontal', command=self.mro_tree.xview)
-        self.mro_tree.configure(yscrollcommand=vsb.set, xscrollcommand=hsb.set)
-        
-        # Pack elements
-        self.mro_tree.grid(row=0, column=0, sticky='nsew')
-        vsb.grid(row=0, column=1, sticky='ns')
-        hsb.grid(row=1, column=0, sticky='ew')
-        
-        list_frame.grid_rowconfigure(0, weight=1)
-        list_frame.grid_columnconfigure(0, weight=1)
-        
+        column_widths = [120, 200, 100, 120, 100, 70, 80, 60, 80, 100, 80]
+        for i, width in enumerate(column_widths):
+            self.mro_tree.setColumnWidth(i, width)
+
+        self.mro_tree.setSortingEnabled(True)
+        self.mro_tree.setAlternatingRowColors(True)
+
         # Double-click to view details
-        self.mro_tree.bind('<Double-1>', lambda e: self.view_part_details())
-        
+        self.mro_tree.itemDoubleClicked.connect(lambda: self.view_part_details())
+
+        list_layout.addWidget(self.mro_tree)
+        list_group.setLayout(list_layout)
+        main_layout.addWidget(list_group)
+
         # Statistics frame
-        stats_frame = ttk.LabelFrame(mro_frame, text="Inventory Statistics", padding=10)
-        stats_frame.pack(fill='x', padx=10, pady=5)
-        
-        self.mro_stats_label = ttk.Label(stats_frame, text="Loading...", 
-                                         font=('Arial', 10))
-        self.mro_stats_label.pack()
-        
+        stats_group = QGroupBox("Inventory Statistics")
+        stats_layout = QVBoxLayout()
+
+        self.mro_stats_label = QLabel("Loading...")
+        font = QFont('Arial', 10)
+        self.mro_stats_label.setFont(font)
+        stats_layout.addWidget(self.mro_stats_label)
+
+        stats_group.setLayout(stats_layout)
+        main_layout.addWidget(stats_group)
+
         # Load initial data
         self.refresh_mro_list()
-        
+
+        notebook.addTab(mro_frame, 'MRO Stock')
         return mro_frame
-    
+
     def add_part_dialog(self):
         """Dialog to add new part"""
-        dialog = tk.Toplevel(self.root)
-        dialog.title("Add New MRO Part")
-        dialog.geometry("800x900")
-        dialog.transient(self.root)
-        dialog.grab_set()
-        
-        # Create scrollable frame
-        canvas = tk.Canvas(dialog)
-        scrollbar = ttk.Scrollbar(dialog, orient="vertical", command=canvas.yview)
-        scrollable_frame = ttk.Frame(canvas)
-        
-        scrollable_frame.bind(
-            "<Configure>",
-            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
-        )
-    
-        # ✅ FIX THIS LINE - it was incomplete!
-        canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
-        canvas.configure(yscrollcommand=scrollbar.set)
-        
+        dialog = QDialog(self.root)
+        dialog.setWindowTitle("Add New MRO Part")
+        dialog.resize(800, 900)
+        dialog.setModal(True)
+
+        # Main layout with scroll area
+        main_layout = QVBoxLayout(dialog)
+
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        scroll_widget = QWidget()
+        scroll_layout = QGridLayout(scroll_widget)
+
         # Form fields
         fields = {}
         row = 0
-        
+
         # Basic Information
-        ttk.Label(scrollable_frame, text="BASIC INFORMATION", 
-                font=('Arial', 11, 'bold')).grid(row=row, column=0, columnspan=2, 
-                                              sticky='w', padx=10, pady=10)
+        basic_label = QLabel("BASIC INFORMATION")
+        font = QFont('Arial', 11, QFont.Bold)
+        basic_label.setFont(font)
+        scroll_layout.addWidget(basic_label, row, 0, 1, 2)
         row += 1
-    
+
         field_configs = [
             ('Name*', 'name'),
             ('Part Number*', 'part_number'),
             ('Model Number', 'model_number'),
             ('Equipment', 'equipment'),
         ]
-    
+
         for label, field_name in field_configs:
-            ttk.Label(scrollable_frame, text=label).grid(row=row, column=0, 
-                                                        sticky='w', padx=10, pady=5)
-            fields[field_name] = ttk.Entry(scrollable_frame, width=50)
-            fields[field_name].grid(row=row, column=1, sticky='w', padx=10, pady=5)
+            scroll_layout.addWidget(QLabel(label), row, 0)
+            fields[field_name] = QLineEdit()
+            scroll_layout.addWidget(fields[field_name], row, 1)
             row += 1
-    
+
         # Stock Information
-        ttk.Label(scrollable_frame, text="STOCK INFORMATION", 
-                font=('Arial', 11, 'bold')).grid(row=row, column=0, columnspan=2, 
-                                                sticky='w', padx=10, pady=10)
+        stock_label = QLabel("STOCK INFORMATION")
+        stock_label.setFont(font)
+        scroll_layout.addWidget(stock_label, row, 0, 1, 2)
         row += 1
-    
+
         stock_fields = [
             ('Engineering System*', 'engineering_system'),
             ('Unit of Measure*', 'unit_of_measure'),
@@ -412,72 +412,73 @@ class MROStockManager:
             ('Minimum Stock*', 'minimum_stock'),
             ('Supplier', 'supplier'),
         ]
-    
+
         for label, field_name in stock_fields:
-            ttk.Label(scrollable_frame, text=label).grid(row=row, column=0, 
-                                                        sticky='w', padx=10, pady=5)
-            fields[field_name] = ttk.Entry(scrollable_frame, width=50)
-            fields[field_name].grid(row=row, column=1, sticky='w', padx=10, pady=5)
+            scroll_layout.addWidget(QLabel(label), row, 0)
+            fields[field_name] = QLineEdit()
+            scroll_layout.addWidget(fields[field_name], row, 1)
             row += 1
-    
+
         # Location Information
-        ttk.Label(scrollable_frame, text="LOCATION INFORMATION", 
-                font=('Arial', 11, 'bold')).grid(row=row, column=0, columnspan=2, 
-                                                sticky='w', padx=10, pady=10)
+        location_label = QLabel("LOCATION INFORMATION")
+        location_label.setFont(font)
+        scroll_layout.addWidget(location_label, row, 0, 1, 2)
         row += 1
-    
+
         location_fields = [
             ('Location*', 'location'),
             ('Rack', 'rack'),
             ('Row', 'row'),
             ('Bin', 'bin'),
         ]
-    
+
         for label, field_name in location_fields:
-            ttk.Label(scrollable_frame, text=label).grid(row=row, column=0, 
-                                                        sticky='w', padx=10, pady=5)
-            fields[field_name] = ttk.Entry(scrollable_frame, width=50)
-            fields[field_name].grid(row=row, column=1, sticky='w', padx=10, pady=5)
+            scroll_layout.addWidget(QLabel(label), row, 0)
+            fields[field_name] = QLineEdit()
+            scroll_layout.addWidget(fields[field_name], row, 1)
             row += 1
-    
+
         # Pictures
-        ttk.Label(scrollable_frame, text="PICTURES", 
-                font=('Arial', 11, 'bold')).grid(row=row, column=0, columnspan=2, 
-                                                sticky='w', padx=10, pady=10)
+        pictures_label = QLabel("PICTURES")
+        pictures_label.setFont(font)
+        scroll_layout.addWidget(pictures_label, row, 0, 1, 2)
         row += 1
-    
-        fields['picture_1'] = tk.StringVar()
-        fields['picture_2'] = tk.StringVar()
-        
-        ttk.Label(scrollable_frame, text="Picture 1:").grid(row=row, column=0, 
-                                                            sticky='w', padx=10, pady=5)
-        pic1_frame = ttk.Frame(scrollable_frame)
-        pic1_frame.grid(row=row, column=1, sticky='w', padx=10, pady=5)
-        ttk.Entry(pic1_frame, textvariable=fields['picture_1'], width=35).pack(side='left')
-        ttk.Button(pic1_frame, text="Browse", 
-                command=lambda: self.browse_image(fields['picture_1'])).pack(side='left', padx=5)
+
+        fields['picture_1'] = QLineEdit()
+        fields['picture_2'] = QLineEdit()
+
+        scroll_layout.addWidget(QLabel("Picture 1:"), row, 0)
+        pic1_layout = QHBoxLayout()
+        pic1_layout.addWidget(fields['picture_1'])
+        pic1_browse_btn = QPushButton("Browse")
+        pic1_browse_btn.clicked.connect(lambda: self.browse_image(fields['picture_1']))
+        pic1_layout.addWidget(pic1_browse_btn)
+        pic1_widget = QWidget()
+        pic1_widget.setLayout(pic1_layout)
+        scroll_layout.addWidget(pic1_widget, row, 1)
         row += 1
-    
-        ttk.Label(scrollable_frame, text="Picture 2:").grid(row=row, column=0, 
-                                                            sticky='w', padx=10, pady=5)
-        pic2_frame = ttk.Frame(scrollable_frame)
-        pic2_frame.grid(row=row, column=1, sticky='w', padx=10, pady=5)
-        ttk.Entry(pic2_frame, textvariable=fields['picture_2'], width=35).pack(side='left')
-        ttk.Button(pic2_frame, text="Browse", 
-                command=lambda: self.browse_image(fields['picture_2'])).pack(side='left', padx=5)
+
+        scroll_layout.addWidget(QLabel("Picture 2:"), row, 0)
+        pic2_layout = QHBoxLayout()
+        pic2_layout.addWidget(fields['picture_2'])
+        pic2_browse_btn = QPushButton("Browse")
+        pic2_browse_btn.clicked.connect(lambda: self.browse_image(fields['picture_2']))
+        pic2_layout.addWidget(pic2_browse_btn)
+        pic2_widget = QWidget()
+        pic2_widget.setLayout(pic2_layout)
+        scroll_layout.addWidget(pic2_widget, row, 1)
         row += 1
-    
+
         # Notes
-        ttk.Label(scrollable_frame, text="Notes:").grid(row=row, column=0, 
-                                                        sticky='nw', padx=10, pady=5)
-        fields['notes'] = tk.Text(scrollable_frame, width=50, height=5)
-        fields['notes'].grid(row=row, column=1, sticky='w', padx=10, pady=5)
+        scroll_layout.addWidget(QLabel("Notes:"), row, 0, Qt.AlignTop)
+        fields['notes'] = QTextEdit()
+        fields['notes'].setMaximumHeight(100)
+        scroll_layout.addWidget(fields['notes'], row, 1)
         row += 1
-    
+
         # Buttons
-        btn_frame = ttk.Frame(scrollable_frame)
-        btn_frame.grid(row=row, column=0, columnspan=2, pady=20)
-    
+        btn_layout = QHBoxLayout()
+
         def save_part():
             try:
                 # Validate required fields
@@ -487,14 +488,14 @@ class MROStockManager:
                 for field in required:
                     if field in ['notes', 'picture_1', 'picture_2']:
                         continue
-                    value = fields[field].get() if hasattr(fields[field], 'get') else ''
+                    value = fields[field].text() if hasattr(fields[field], 'text') else ''
                     if not value:
-                        messagebox.showerror("Error", f"Please fill in: {field.replace('_', ' ').title()}")
+                        QMessageBox.critical(dialog, "Error", f"Please fill in: {field.replace('_', ' ').title()}")
                         return
 
                 # Read image files as binary data
-                pic1_path = fields['picture_1'].get()
-                pic2_path = fields['picture_2'].get()
+                pic1_path = fields['picture_1'].text()
+                pic2_path = fields['picture_2'].text()
 
                 pic1_data = None
                 pic2_data = None
@@ -508,7 +509,7 @@ class MROStockManager:
                         pic2_data = f.read()
 
                 # Insert into database using connection pool
-                notes_text = fields['notes'].get('1.0', 'end-1c') if 'notes' in fields else ''
+                notes_text = fields['notes'].toPlainText() if 'notes' in fields else ''
 
                 # Use connection pool to avoid SSL timeout issues
                 with db_pool.get_cursor(commit=True) as cursor:
@@ -520,20 +521,20 @@ class MROStockManager:
                             picture_1_data, picture_2_data, notes
                         ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                     ''', (
-                        fields['name'].get(),
-                        fields['part_number'].get(),
-                        fields['model_number'].get(),
-                        fields['equipment'].get(),
-                        fields['engineering_system'].get(),
-                        fields['unit_of_measure'].get(),
-                        float(fields['quantity_in_stock'].get() or 0),
-                        float(fields['unit_price'].get() or 0),
-                        float(fields['minimum_stock'].get() or 0),
-                        fields['supplier'].get(),
-                        fields['location'].get(),
-                        fields['rack'].get(),
-                        fields['row'].get(),
-                        fields['bin'].get(),
+                        fields['name'].text(),
+                        fields['part_number'].text(),
+                        fields['model_number'].text(),
+                        fields['equipment'].text(),
+                        fields['engineering_system'].text(),
+                        fields['unit_of_measure'].text(),
+                        float(fields['quantity_in_stock'].text() or 0),
+                        float(fields['unit_price'].text() or 0),
+                        float(fields['minimum_stock'].text() or 0),
+                        fields['supplier'].text(),
+                        fields['location'].text(),
+                        fields['rack'].text(),
+                        fields['row'].text(),
+                        fields['bin'].text(),
                         pic1_path,
                         pic2_path,
                         pic1_data,
@@ -541,16 +542,16 @@ class MROStockManager:
                         notes_text
                     ))
 
-                messagebox.showinfo("Success", "Part added successfully!")
-                dialog.destroy()
+                QMessageBox.information(dialog, "Success", "Part added successfully!")
+                dialog.accept()
                 self.refresh_mro_list()
 
             except Exception as e:
                 error_msg = str(e).lower()
                 if 'unique constraint' in error_msg or 'duplicate' in error_msg or 'already exists' in error_msg:
-                    messagebox.showerror("Error", "Part number already exists!")
+                    QMessageBox.critical(dialog, "Error", "Part number already exists!")
                 elif 'ssl' in error_msg or 'connection' in error_msg:
-                    messagebox.showerror("Database Connection Error",
+                    QMessageBox.critical(dialog, "Database Connection Error",
                         "Failed to connect to database. This may be due to:\n"
                         "• Network connectivity issues\n"
                         "• SSL certificate problems\n"
@@ -558,33 +559,43 @@ class MROStockManager:
                         f"Technical details: {str(e)}\n\n"
                         "Please try again. If the problem persists, contact IT support.")
                 else:
-                    messagebox.showerror("Error", f"Failed to add part: {str(e)}")
-    
-        ttk.Button(btn_frame, text="💾 Save Part", command=save_part, width=20).pack(side='left', padx=10)
-        ttk.Button(btn_frame, text="❌ Cancel", command=dialog.destroy, width=20).pack(side='left', padx=10)
-        
-        # ✅ CRITICAL: Pack canvas and scrollbar - THIS MUST BE AT THE END!
-        canvas.pack(side="left", fill="both", expand=True)
-        scrollbar.pack(side="right", fill="y")
-    
-    def browse_image(self, var):
+                    QMessageBox.critical(dialog, "Error", f"Failed to add part: {str(e)}")
+
+        save_btn = QPushButton("Save Part")
+        save_btn.clicked.connect(save_part)
+        btn_layout.addWidget(save_btn)
+
+        cancel_btn = QPushButton("Cancel")
+        cancel_btn.clicked.connect(dialog.reject)
+        btn_layout.addWidget(cancel_btn)
+
+        scroll_layout.addLayout(btn_layout, row, 0, 1, 2)
+
+        scroll_area.setWidget(scroll_widget)
+        main_layout.addWidget(scroll_area)
+
+        dialog.exec_()
+
+    def browse_image(self, line_edit):
         """Browse for image file"""
-        file_path = filedialog.askopenfilename(
-            title="Select Image",
-            filetypes=[("Image files", "*.png *.jpg *.jpeg *.gif *.bmp"), ("All files", "*.*")]
+        file_path, _ = QFileDialog.getOpenFileName(
+            self.root,
+            "Select Image",
+            "",
+            "Image files (*.png *.jpg *.jpeg *.gif *.bmp);;All files (*.*)"
         )
         if file_path:
-            var.set(file_path)
-    
+            line_edit.setText(file_path)
+
     def edit_selected_part(self):
         """Edit selected part"""
-        selected = self.mro_tree.selection()
-        if not selected:
-            messagebox.showwarning("Warning", "Please select a part to edit")
+        selected_items = self.mro_tree.selectedItems()
+        if not selected_items:
+            QMessageBox.warning(self.root, "Warning", "Please select a part to edit")
             return
 
-        item = self.mro_tree.item(selected[0])
-        part_number = str(item['values'][0]).strip()  # Convert to string and strip whitespace
+        item = selected_items[0]
+        part_number = str(item.text(0)).strip()
 
         try:
             # Get full part data - use explicit column list to ensure correct order
@@ -600,8 +611,7 @@ class MROStockManager:
                 part_data = cursor.fetchone()
 
                 if not part_data:
-                    # Enhanced error message for debugging
-                    messagebox.showerror("Error",
+                    QMessageBox.critical(self.root, "Error",
                         f"Part not found in database.\n\n"
                         f"Part number from tree: '{part_number}'\n"
                         f"Length: {len(part_number)} characters\n\n"
@@ -611,75 +621,66 @@ class MROStockManager:
                 # Extract all data while cursor is still active
                 part_dict = dict(part_data)
         except Exception as e:
-            messagebox.showerror("Database Error",
+            QMessageBox.critical(self.root, "Database Error",
                 f"Error loading part data: {str(e)}\n\n"
                 f"Part number: '{part_number}'")
             return
 
-        # Create edit dialog (similar to add dialog but pre-filled)
-        dialog = tk.Toplevel(self.root)
-        dialog.title(f"Edit Part: {part_number}")
-        dialog.geometry("800x900")
-        dialog.transient(self.root)
-        dialog.grab_set()
+        # Create edit dialog
+        dialog = QDialog(self.root)
+        dialog.setWindowTitle(f"Edit Part: {part_number}")
+        dialog.resize(800, 900)
+        dialog.setModal(True)
 
-        # Create scrollable frame
-        canvas = tk.Canvas(dialog)
-        scrollbar = ttk.Scrollbar(dialog, orient="vertical", command=canvas.yview)
-        scrollable_frame = ttk.Frame(canvas)
+        # Main layout with scroll area
+        main_layout = QVBoxLayout(dialog)
 
-        scrollable_frame.bind(
-            "<Configure>",
-            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
-        )
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        scroll_widget = QWidget()
+        scroll_layout = QGridLayout(scroll_widget)
 
-        canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
-        canvas.configure(yscrollcommand=scrollbar.set)
-
-        # part_dict was already extracted from cursor context above
-        # Form fields (similar structure to add_part_dialog)
+        # Form fields
         fields = {}
         row = 0
-        
+
         # Basic Information
-        ttk.Label(scrollable_frame, text="BASIC INFORMATION", 
-                 font=('Arial', 11, 'bold')).grid(row=row, column=0, columnspan=2, 
-                                                  sticky='w', padx=10, pady=10)
+        basic_label = QLabel("BASIC INFORMATION")
+        font = QFont('Arial', 11, QFont.Bold)
+        basic_label.setFont(font)
+        scroll_layout.addWidget(basic_label, row, 0, 1, 2)
         row += 1
-        
+
         field_configs = [
             ('Name*', 'name'),
             ('Part Number*', 'part_number'),
             ('Model Number', 'model_number'),
             ('Equipment', 'equipment'),
         ]
-        
+
         for label, field_name in field_configs:
-            ttk.Label(scrollable_frame, text=label).grid(row=row, column=0, 
-                                                         sticky='w', padx=10, pady=5)
-            fields[field_name] = ttk.Entry(scrollable_frame, width=50)
-            fields[field_name].insert(0, part_dict.get(field_name) or '')
+            scroll_layout.addWidget(QLabel(label), row, 0)
+            fields[field_name] = QLineEdit()
+            fields[field_name].setText(part_dict.get(field_name) or '')
             if field_name == 'part_number':
-                fields[field_name].config(state='readonly')  # Don't allow changing part number
-            fields[field_name].grid(row=row, column=1, sticky='w', padx=10, pady=5)
+                fields[field_name].setReadOnly(True)
+            scroll_layout.addWidget(fields[field_name], row, 1)
             row += 1
-        
+
         # Engineering System
-        ttk.Label(scrollable_frame, text="Engineering System*").grid(row=row, column=0, 
-                                                                     sticky='w', padx=10, pady=5)
-        fields['engineering_system'] = ttk.Combobox(scrollable_frame,
-                                                     values=['Mechanical', 'Electrical', 'Pneumatic', 'Hydraulic'],
-                                                     width=47, state='readonly')
-        fields['engineering_system'].set(part_dict.get('engineering_system') or '')
-        fields['engineering_system'].grid(row=row, column=1, sticky='w', padx=10, pady=5)
+        scroll_layout.addWidget(QLabel("Engineering System*"), row, 0)
+        fields['engineering_system'] = QComboBox()
+        fields['engineering_system'].addItems(['Mechanical', 'Electrical', 'Pneumatic', 'Hydraulic'])
+        fields['engineering_system'].setCurrentText(part_dict.get('engineering_system') or '')
+        scroll_layout.addWidget(fields['engineering_system'], row, 1)
         row += 1
-        
+
         # Stock Information
-        ttk.Label(scrollable_frame, text="STOCK INFORMATION", 
-                 font=('Arial', 11, 'bold')).grid(row=row, column=0, columnspan=2, 
-                                                  sticky='w', padx=10, pady=10)
+        stock_label = QLabel("STOCK INFORMATION")
+        stock_label.setFont(font)
+        scroll_layout.addWidget(stock_label, row, 0, 1, 2)
         row += 1
-        
+
         stock_fields = [
             ('Unit of Measure*', 'unit_of_measure'),
             ('Quantity in Stock*', 'quantity_in_stock'),
@@ -687,97 +688,99 @@ class MROStockManager:
             ('Minimum Stock*', 'minimum_stock'),
             ('Supplier', 'supplier'),
         ]
-        
+
         for label, field_name in stock_fields:
-            ttk.Label(scrollable_frame, text=label).grid(row=row, column=0, 
-                                                         sticky='w', padx=10, pady=5)
-            fields[field_name] = ttk.Entry(scrollable_frame, width=50)
-            fields[field_name].insert(0, str(part_dict.get(field_name) or ''))
-            fields[field_name].grid(row=row, column=1, sticky='w', padx=10, pady=5)
+            scroll_layout.addWidget(QLabel(label), row, 0)
+            fields[field_name] = QLineEdit()
+            fields[field_name].setText(str(part_dict.get(field_name) or ''))
+            scroll_layout.addWidget(fields[field_name], row, 1)
             row += 1
-        
+
         # Location Information
-        ttk.Label(scrollable_frame, text="LOCATION INFORMATION", 
-                 font=('Arial', 11, 'bold')).grid(row=row, column=0, columnspan=2, 
-                                                  sticky='w', padx=10, pady=10)
+        location_label = QLabel("LOCATION INFORMATION")
+        location_label.setFont(font)
+        scroll_layout.addWidget(location_label, row, 0, 1, 2)
         row += 1
-        
+
         location_fields = [
             ('Location*', 'location'),
             ('Rack', 'rack'),
             ('Row', 'row'),
             ('Bin', 'bin'),
         ]
-        
+
         for label, field_name in location_fields:
-            ttk.Label(scrollable_frame, text=label).grid(row=row, column=0, 
-                                                         sticky='w', padx=10, pady=5)
-            fields[field_name] = ttk.Entry(scrollable_frame, width=50)
-            fields[field_name].insert(0, part_dict.get(field_name) or '')
-            fields[field_name].grid(row=row, column=1, sticky='w', padx=10, pady=5)
+            scroll_layout.addWidget(QLabel(label), row, 0)
+            fields[field_name] = QLineEdit()
+            fields[field_name].setText(part_dict.get(field_name) or '')
+            scroll_layout.addWidget(fields[field_name], row, 1)
             row += 1
-        
+
         # Status
-        ttk.Label(scrollable_frame, text="Status*").grid(row=row, column=0, 
-                                                         sticky='w', padx=10, pady=5)
-        fields['status'] = ttk.Combobox(scrollable_frame,
-                                       values=['Active', 'Inactive'],
-                                       width=47, state='readonly')
-        fields['status'].set(part_dict.get('status') or 'Active')
-        fields['status'].grid(row=row, column=1, sticky='w', padx=10, pady=5)
+        scroll_layout.addWidget(QLabel("Status*"), row, 0)
+        fields['status'] = QComboBox()
+        fields['status'].addItems(['Active', 'Inactive'])
+        fields['status'].setCurrentText(part_dict.get('status') or 'Active')
+        scroll_layout.addWidget(fields['status'], row, 1)
         row += 1
-        
+
         # Pictures
-        ttk.Label(scrollable_frame, text="PICTURES",
-                 font=('Arial', 11, 'bold')).grid(row=row, column=0, columnspan=2,
-                                                  sticky='w', padx=10, pady=10)
+        pictures_label = QLabel("PICTURES")
+        pictures_label.setFont(font)
+        scroll_layout.addWidget(pictures_label, row, 0, 1, 2)
         row += 1
 
-        # Initialize photo fields - start empty to indicate "no change"
-        fields['picture_1'] = tk.StringVar(value='')
-        fields['picture_2'] = tk.StringVar(value='')
-
-        # Show current photo status
-        pic1_status = "📷 Photo stored in database" if part_dict.get('picture_1_data') else "No photo"
-        ttk.Label(scrollable_frame, text="Picture 1:").grid(row=row, column=0,
-                                                            sticky='w', padx=10, pady=5)
-        pic1_frame = ttk.Frame(scrollable_frame)
-        pic1_frame.grid(row=row, column=1, sticky='w', padx=10, pady=5)
-        ttk.Label(pic1_frame, text=pic1_status, foreground='green' if part_dict.get('picture_1_data') else 'gray').pack(side='left', padx=5)
-        ttk.Entry(pic1_frame, textvariable=fields['picture_1'], width=25).pack(side='left')
-        ttk.Button(pic1_frame, text="Browse New",
-                  command=lambda: self.browse_image(fields['picture_1'])).pack(side='left', padx=5)
-        row += 1
+        # Initialize photo fields
+        fields['picture_1'] = QLineEdit()
+        fields['picture_2'] = QLineEdit()
 
         # Show current photo status
-        pic2_status = "📷 Photo stored in database" if part_dict.get('picture_2_data') else "No photo"
-        ttk.Label(scrollable_frame, text="Picture 2:").grid(row=row, column=0,
-                                                            sticky='w', padx=10, pady=5)
-        pic2_frame = ttk.Frame(scrollable_frame)
-        pic2_frame.grid(row=row, column=1, sticky='w', padx=10, pady=5)
-        ttk.Label(pic2_frame, text=pic2_status, foreground='green' if part_dict.get('picture_2_data') else 'gray').pack(side='left', padx=5)
-        ttk.Entry(pic2_frame, textvariable=fields['picture_2'], width=25).pack(side='left')
-        ttk.Button(pic2_frame, text="Browse New",
-                  command=lambda: self.browse_image(fields['picture_2'])).pack(side='left', padx=5)
+        pic1_status = "Photo stored in database" if part_dict.get('picture_1_data') else "No photo"
+        scroll_layout.addWidget(QLabel("Picture 1:"), row, 0)
+        pic1_layout = QHBoxLayout()
+        pic1_status_label = QLabel(pic1_status)
+        pic1_status_label.setStyleSheet("color: green;" if part_dict.get('picture_1_data') else "color: gray;")
+        pic1_layout.addWidget(pic1_status_label)
+        pic1_layout.addWidget(fields['picture_1'])
+        pic1_browse_btn = QPushButton("Browse New")
+        pic1_browse_btn.clicked.connect(lambda: self.browse_image(fields['picture_1']))
+        pic1_layout.addWidget(pic1_browse_btn)
+        pic1_widget = QWidget()
+        pic1_widget.setLayout(pic1_layout)
+        scroll_layout.addWidget(pic1_widget, row, 1)
         row += 1
-        
+
+        pic2_status = "Photo stored in database" if part_dict.get('picture_2_data') else "No photo"
+        scroll_layout.addWidget(QLabel("Picture 2:"), row, 0)
+        pic2_layout = QHBoxLayout()
+        pic2_status_label = QLabel(pic2_status)
+        pic2_status_label.setStyleSheet("color: green;" if part_dict.get('picture_2_data') else "color: gray;")
+        pic2_layout.addWidget(pic2_status_label)
+        pic2_layout.addWidget(fields['picture_2'])
+        pic2_browse_btn = QPushButton("Browse New")
+        pic2_browse_btn.clicked.connect(lambda: self.browse_image(fields['picture_2']))
+        pic2_layout.addWidget(pic2_browse_btn)
+        pic2_widget = QWidget()
+        pic2_widget.setLayout(pic2_layout)
+        scroll_layout.addWidget(pic2_widget, row, 1)
+        row += 1
+
         # Notes
-        ttk.Label(scrollable_frame, text="Notes:").grid(row=row, column=0, 
-                                                        sticky='nw', padx=10, pady=5)
-        fields['notes'] = tk.Text(scrollable_frame, width=50, height=5)
-        fields['notes'].insert('1.0', part_dict.get('notes') or '')
-        fields['notes'].grid(row=row, column=1, sticky='w', padx=10, pady=5)
+        scroll_layout.addWidget(QLabel("Notes:"), row, 0, Qt.AlignTop)
+        fields['notes'] = QTextEdit()
+        fields['notes'].setPlainText(part_dict.get('notes') or '')
+        fields['notes'].setMaximumHeight(100)
+        scroll_layout.addWidget(fields['notes'], row, 1)
         row += 1
-        
+
         # Buttons
-        btn_frame = ttk.Frame(scrollable_frame)
-        btn_frame.grid(row=row, column=0, columnspan=2, pady=20)
-        
+        btn_layout = QHBoxLayout()
+
         def update_part():
             try:
                 # Read image files as binary data
-                pic1_path = fields['picture_1'].get()
-                pic2_path = fields['picture_2'].get()
+                pic1_path = fields['picture_1'].text()
+                pic2_path = fields['picture_2'].text()
 
                 # Get existing photo data and paths from database first
                 with db_pool.get_cursor(commit=False) as cursor:
@@ -789,7 +792,6 @@ class MROStockManager:
                     existing_pic2_data = existing_data['picture_2_data'] if existing_data else None
 
                 # Only read new photo data if a NEW file is selected
-                # Default to existing data and paths
                 final_pic1_path = existing_pic1_path
                 final_pic2_path = existing_pic2_path
                 pic1_data = existing_pic1_data
@@ -797,19 +799,21 @@ class MROStockManager:
 
                 # Check if user selected a new file for picture 1
                 if pic1_path and os.path.exists(pic1_path):
-                    # User browsed and selected a new file
                     with open(pic1_path, 'rb') as f:
                         pic1_data = f.read()
                     final_pic1_path = pic1_path
 
                 # Check if user selected a new file for picture 2
                 if pic2_path and os.path.exists(pic2_path):
-                    # User browsed and selected a new file
                     with open(pic2_path, 'rb') as f:
                         pic2_data = f.read()
                     final_pic2_path = pic2_path
 
-                notes_text = fields['notes'].get('1.0', 'end-1c')
+                notes_text = fields['notes'].toPlainText()
+
+                # Get engineering system value
+                eng_system_value = fields['engineering_system'].currentText() if isinstance(fields['engineering_system'], QComboBox) else fields['engineering_system'].text()
+                status_value = fields['status'].currentText() if isinstance(fields['status'], QComboBox) else fields['status'].text()
 
                 with db_pool.get_cursor(commit=True) as cursor:
                     cursor.execute('''
@@ -822,82 +826,94 @@ class MROStockManager:
                             notes = %s, status = %s, last_updated = %s
                         WHERE part_number = %s
                     ''', (
-                        fields['name'].get(),
-                        fields['model_number'].get(),
-                        fields['equipment'].get(),
-                        fields['engineering_system'].get(),
-                        fields['unit_of_measure'].get(),
-                        float(fields['quantity_in_stock'].get() or 0),
-                        float(fields['unit_price'].get() or 0),
-                        float(fields['minimum_stock'].get() or 0),
-                        fields['supplier'].get(),
-                        fields['location'].get(),
-                        fields['rack'].get(),
-                        fields['row'].get(),
-                        fields['bin'].get(),
+                        fields['name'].text(),
+                        fields['model_number'].text(),
+                        fields['equipment'].text(),
+                        eng_system_value,
+                        fields['unit_of_measure'].text(),
+                        float(fields['quantity_in_stock'].text() or 0),
+                        float(fields['unit_price'].text() or 0),
+                        float(fields['minimum_stock'].text() or 0),
+                        fields['supplier'].text(),
+                        fields['location'].text(),
+                        fields['rack'].text(),
+                        fields['row'].text(),
+                        fields['bin'].text(),
                         final_pic1_path,
                         final_pic2_path,
                         pic1_data,
                         pic2_data,
                         notes_text,
-                        fields['status'].get(),
+                        status_value,
                         datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
                         part_number
                     ))
 
-                messagebox.showinfo("Success", "Part updated successfully!")
-                dialog.destroy()
+                QMessageBox.information(dialog, "Success", "Part updated successfully!")
+                dialog.accept()
                 self.refresh_mro_list()
 
             except Exception as e:
-                messagebox.showerror("Error", f"Failed to update part: {str(e)}")
-        
-        ttk.Button(btn_frame, text="💾 Update Part", command=update_part, width=20).pack(side='left', padx=10)
-        ttk.Button(btn_frame, text="❌ Cancel", command=dialog.destroy, width=20).pack(side='left', padx=10)
-        
-        # Pack canvas and scrollbar
-        canvas.pack(side="left", fill="both", expand=True)
-        scrollbar.pack(side="right", fill="y")
-    
+                QMessageBox.critical(dialog, "Error", f"Failed to update part: {str(e)}")
+
+        update_btn = QPushButton("Update Part")
+        update_btn.clicked.connect(update_part)
+        btn_layout.addWidget(update_btn)
+
+        cancel_btn = QPushButton("Cancel")
+        cancel_btn.clicked.connect(dialog.reject)
+        btn_layout.addWidget(cancel_btn)
+
+        scroll_layout.addLayout(btn_layout, row, 0, 1, 2)
+
+        scroll_area.setWidget(scroll_widget)
+        main_layout.addWidget(scroll_area)
+
+        dialog.exec_()
+
     def delete_selected_part(self):
         """Delete selected part"""
-        selected = self.mro_tree.selection()
-        if not selected:
-            messagebox.showwarning("Warning", "Please select a part to delete")
+        selected_items = self.mro_tree.selectedItems()
+        if not selected_items:
+            QMessageBox.warning(self.root, "Warning", "Please select a part to delete")
             return
 
-        item = self.mro_tree.item(selected[0])
-        part_number = str(item['values'][0])  # Convert to string to avoid type mismatch
-        part_name = item['values'][1]
-        
-        result = messagebox.askyesno("Confirm Delete", 
-                                    f"Are you sure you want to delete:\n\n"
-                                    f"Part Number: {part_number}\n"
-                                    f"Name: {part_name}\n\n"
-                                    f"This action cannot be undone!")
-        
-        if result:
+        item = selected_items[0]
+        part_number = str(item.text(0))
+        part_name = item.text(1)
+
+        result = QMessageBox.question(
+            self.root,
+            "Confirm Delete",
+            f"Are you sure you want to delete:\n\n"
+            f"Part Number: {part_number}\n"
+            f"Name: {part_name}\n\n"
+            f"This action cannot be undone!",
+            QMessageBox.Yes | QMessageBox.No
+        )
+
+        if result == QMessageBox.Yes:
             try:
                 with db_pool.get_cursor(commit=True) as cursor:
                     cursor.execute('DELETE FROM mro_inventory WHERE part_number = %s', (part_number,))
-                messagebox.showinfo("Success", "Part deleted successfully!")
+                QMessageBox.information(self.root, "Success", "Part deleted successfully!")
                 self.refresh_mro_list()
             except Exception as e:
-                messagebox.showerror("Error", f"Failed to delete part: {str(e)}")
-    
-    
+                QMessageBox.critical(self.root, "Error", f"Failed to delete part: {str(e)}")
+
+
     def view_part_details(self):
         """Enhanced part details view with CM history integration"""
-        selected = self.mro_tree.selection()
-        if not selected:
-            messagebox.showwarning("Warning", "Please select a part to view")
+        selected_items = self.mro_tree.selectedItems()
+        if not selected_items:
+            QMessageBox.warning(self.root, "Warning", "Please select a part to view")
             return
 
-        item = self.mro_tree.item(selected[0])
-        part_number = str(item['values'][0]).strip()  # Convert to string and strip whitespace
+        item = selected_items[0]
+        part_number = str(item.text(0)).strip()
 
         try:
-            # Get full part data - use explicit column list to ensure correct order
+            # Get full part data
             with db_pool.get_cursor(commit=False) as cursor:
                 cursor.execute('''
                     SELECT id, name, part_number, model_number, equipment, engineering_system,
@@ -910,240 +926,206 @@ class MROStockManager:
                 part_data = cursor.fetchone()
 
                 if not part_data:
-                    # Enhanced error message for debugging
-                    messagebox.showerror("Error",
+                    QMessageBox.critical(self.root, "Error",
                         f"Part not found in database.\n\n"
                         f"Part number from tree: '{part_number}'\n"
                         f"Length: {len(part_number)} characters\n\n"
                         f"Try clicking the Refresh button and then try again.")
                     return
 
-                # Extract all data while cursor is still active (RealDictCursor data becomes invalid after context exits)
-                id = part_data['id']
-                name = part_data['name']
-                part_num = part_data['part_number']
-                model = part_data['model_number']
-                equipment = part_data['equipment']
-                eng_system = part_data['engineering_system']
-                unit = part_data['unit_of_measure']
-                qty_stock = part_data['quantity_in_stock']
-                unit_price = part_data['unit_price']
-                min_stock = part_data['minimum_stock']
-                supplier = part_data['supplier']
-                location = part_data['location']
-                rack = part_data['rack']
-                row_num = part_data['row']
-                bin_num = part_data['bin']
-                pic1_path = part_data['picture_1_path']
-                pic2_path = part_data['picture_2_path']
-                pic1_data = part_data['picture_1_data']
-                pic2_data = part_data['picture_2_data']
-                notes = part_data['notes']
-                last_updated = part_data['last_updated']
-                created_date = part_data['created_date']
-                status = part_data['status']
+                # Extract all data
+                part_dict = dict(part_data)
         except Exception as e:
-            messagebox.showerror("Database Error",
+            QMessageBox.critical(self.root, "Database Error",
                 f"Error loading part details: {str(e)}\n\n"
                 f"Part number: '{part_number}'")
             return
 
         # Create details dialog
-        dialog = tk.Toplevel(self.root)
-        dialog.title(f"Part Details - {part_number}")
-        dialog.geometry("900x700")
-        dialog.transient(self.root)
+        dialog = QDialog(self.root)
+        dialog.setWindowTitle(f"Part Details - {part_number}")
+        dialog.resize(900, 700)
+        dialog.setModal(True)
 
-        # Create notebook for tabs
-        notebook = ttk.Notebook(dialog)
-        notebook.pack(fill='both', expand=True, padx=10, pady=10)
+        main_layout = QVBoxLayout(dialog)
+
+        # Create tab widget
+        tab_widget = QTabWidget()
 
         # ============================================================
         # TAB 1: Part Information
         # ============================================================
-        info_frame = ttk.Frame(notebook)
-        notebook.add(info_frame, text='📋 Part Information')
+        info_widget = QWidget()
+        info_layout = QVBoxLayout(info_widget)
 
-        # Create scrollable canvas
-        canvas = tk.Canvas(info_frame)
-        scrollbar = ttk.Scrollbar(info_frame, orient="vertical", command=canvas.yview)
-        scrollable_frame = ttk.Frame(canvas)
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        scroll_widget = QWidget()
+        scroll_layout = QGridLayout(scroll_widget)
 
-        scrollable_frame.bind(
-            "<Configure>",
-            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
-        )
-
-        canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
-        canvas.configure(yscrollcommand=scrollbar.set)
-
-        canvas.pack(side="left", fill="both", expand=True)
-        scrollbar.pack(side="right", fill="y")
-
-        # Data already extracted from cursor context above
         row = 0
-    
+
         # Display part information
         fields = [
-            ("Part Number:", part_num),
-            ("Part Name:", name),
-            ("Model Number:", model or 'N/A'),
-            ("Equipment:", equipment or 'N/A'),
-            ("Engineering System:", eng_system or 'N/A'),
+            ("Part Number:", part_dict['part_number']),
+            ("Part Name:", part_dict['name']),
+            ("Model Number:", part_dict['model_number'] or 'N/A'),
+            ("Equipment:", part_dict['equipment'] or 'N/A'),
+            ("Engineering System:", part_dict['engineering_system'] or 'N/A'),
             ("", ""),  # Spacer
-            ("Quantity in Stock:", f"{qty_stock} {unit}"),
-            ("Minimum Stock:", f"{min_stock} {unit}"),
-            ("Unit of Measure:", unit),
-            ("Unit Price:", f"${unit_price:.2f}"),
-            ("Total Value:", f"${qty_stock * unit_price:.2f}"),
+            ("Quantity in Stock:", f"{part_dict['quantity_in_stock']} {part_dict['unit_of_measure']}"),
+            ("Minimum Stock:", f"{part_dict['minimum_stock']} {part_dict['unit_of_measure']}"),
+            ("Unit of Measure:", part_dict['unit_of_measure']),
+            ("Unit Price:", f"${part_dict['unit_price']:.2f}"),
+            ("Total Value:", f"${part_dict['quantity_in_stock'] * part_dict['unit_price']:.2f}"),
             ("", ""),  # Spacer
-            ("Supplier:", supplier or 'N/A'),
-            ("Location:", location or 'N/A'),
-            ("Rack:", rack or 'N/A'),
-            ("Row:", row_num or 'N/A'),
-            ("Bin:", bin_num or 'N/A'),
+            ("Supplier:", part_dict['supplier'] or 'N/A'),
+            ("Location:", part_dict['location'] or 'N/A'),
+            ("Rack:", part_dict['rack'] or 'N/A'),
+            ("Row:", part_dict['row'] or 'N/A'),
+            ("Bin:", part_dict['bin'] or 'N/A'),
             ("", ""),  # Spacer
-            ("Status:", status),
-            ("Created Date:", created_date[:10] if created_date else 'N/A'),
-            ("Last Updated:", last_updated[:10] if last_updated else 'N/A'),
+            ("Status:", part_dict['status']),
+            ("Created Date:", part_dict['created_date'][:10] if part_dict['created_date'] else 'N/A'),
+            ("Last Updated:", part_dict['last_updated'][:10] if part_dict['last_updated'] else 'N/A'),
         ]
-    
+
         for label, value in fields:
             if label:  # Not a spacer
-                ttk.Label(scrollable_frame, text=label, 
-                        font=('Arial', 10, 'bold')).grid(
-                            row=row, column=0, sticky='w', padx=20, pady=5)
-                ttk.Label(scrollable_frame, text=str(value), 
-                        font=('Arial', 10)).grid(
-                            row=row, column=1, sticky='w', padx=20, pady=5)
+                label_widget = QLabel(label)
+                label_widget.setFont(QFont('Arial', 10, QFont.Bold))
+                scroll_layout.addWidget(label_widget, row, 0, Qt.AlignTop)
+
+                value_widget = QLabel(str(value))
+                value_widget.setFont(QFont('Arial', 10))
+                value_widget.setWordWrap(True)
+                scroll_layout.addWidget(value_widget, row, 1, Qt.AlignTop)
             row += 1
-    
+
         # Notes section
-        if notes:
-            ttk.Label(scrollable_frame, text="Notes:",
-                    font=('Arial', 10, 'bold')).grid(
-                        row=row, column=0, sticky='nw', padx=20, pady=5)
-            notes_display = tk.Text(scrollable_frame, width=50, height=4, wrap='word')
-            notes_display.insert('1.0', notes)
-            notes_display.config(state='disabled')
-            notes_display.grid(row=row, column=1, sticky='w', padx=20, pady=5)
+        if part_dict.get('notes'):
+            label_widget = QLabel("Notes:")
+            label_widget.setFont(QFont('Arial', 10, QFont.Bold))
+            scroll_layout.addWidget(label_widget, row, 0, Qt.AlignTop)
+
+            notes_display = QTextEdit()
+            notes_display.setPlainText(part_dict['notes'])
+            notes_display.setReadOnly(True)
+            notes_display.setMaximumHeight(100)
+            scroll_layout.addWidget(notes_display, row, 1)
             row += 1
 
         # Pictures section
         row += 1
-        if pic1_data or pic2_data or pic1_path or pic2_path:
-            ttk.Label(scrollable_frame, text="Pictures:",
-                    font=('Arial', 10, 'bold')).grid(
-                        row=row, column=0, sticky='nw', padx=20, pady=10)
+        pic1_data = part_dict.get('picture_1_data')
+        pic2_data = part_dict.get('picture_2_data')
+        pic1_path = part_dict.get('picture_1_path')
+        pic2_path = part_dict.get('picture_2_path')
 
-            pic_frame = ttk.Frame(scrollable_frame)
-            pic_frame.grid(row=row, column=1, sticky='w', padx=20, pady=10)
+        if pic1_data or pic2_data or pic1_path or pic2_path:
+            label_widget = QLabel("Pictures:")
+            label_widget.setFont(QFont('Arial', 10, QFont.Bold))
+            scroll_layout.addWidget(label_widget, row, 0, Qt.AlignTop)
+
+            pic_layout = QHBoxLayout()
 
             # Display Picture 1
-            pic1_displayed = False
             if pic1_data:
                 try:
-                    # Load from database binary data
                     img1 = Image.open(io.BytesIO(pic1_data))
                     img1.thumbnail((200, 200))
-                    photo1 = ImageTk.PhotoImage(img1)
-                    label1 = ttk.Label(pic_frame, image=photo1)
-                    label1.image = photo1  # Keep a reference
-                    label1.pack(side='left', padx=5)
-                    ttk.Label(pic_frame, text="Picture 1",
-                            font=('Arial', 8)).pack(side='left', padx=5)
-                    pic1_displayed = True
+                    img1 = img1.convert("RGBA")
+                    data = img1.tobytes("raw", "RGBA")
+                    qimage = QImage(data, img1.size[0], img1.size[1], QImage.Format_RGBA8888)
+                    pixmap = QPixmap.fromImage(qimage)
+                    label1 = QLabel()
+                    label1.setPixmap(pixmap)
+                    pic_layout.addWidget(label1)
                 except Exception as e:
-                    ttk.Label(pic_frame, text=f"Picture 1: Error loading from database",
-                            foreground='red').pack(side='left', padx=5)
+                    error_label = QLabel("Picture 1: Error loading")
+                    error_label.setStyleSheet("color: red;")
+                    pic_layout.addWidget(error_label)
             elif pic1_path and os.path.exists(pic1_path):
                 try:
-                    # Fallback to file path for legacy data
-                    img1 = Image.open(pic1_path)
-                    img1.thumbnail((200, 200))
-                    photo1 = ImageTk.PhotoImage(img1)
-                    label1 = ttk.Label(pic_frame, image=photo1)
-                    label1.image = photo1  # Keep a reference
-                    label1.pack(side='left', padx=5)
-                    ttk.Label(pic_frame, text="Picture 1",
-                            font=('Arial', 8)).pack(side='left', padx=5)
-                    pic1_displayed = True
+                    pixmap = QPixmap(pic1_path)
+                    pixmap = pixmap.scaled(200, 200, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+                    label1 = QLabel()
+                    label1.setPixmap(pixmap)
+                    pic_layout.addWidget(label1)
                 except Exception as e:
-                    ttk.Label(pic_frame, text=f"Picture 1: Error loading image",
-                            foreground='red').pack(side='left', padx=5)
-            elif pic1_path:
-                ttk.Label(pic_frame, text=f"Picture 1: (File not found)",
-                        foreground='gray').pack(side='left', padx=5)
+                    error_label = QLabel("Picture 1: Error loading")
+                    error_label.setStyleSheet("color: red;")
+                    pic_layout.addWidget(error_label)
 
             # Display Picture 2
-            pic2_displayed = False
             if pic2_data:
                 try:
-                    # Load from database binary data
                     img2 = Image.open(io.BytesIO(pic2_data))
                     img2.thumbnail((200, 200))
-                    photo2 = ImageTk.PhotoImage(img2)
-                    label2 = ttk.Label(pic_frame, image=photo2)
-                    label2.image = photo2  # Keep a reference
-                    label2.pack(side='left', padx=5)
-                    ttk.Label(pic_frame, text="Picture 2",
-                            font=('Arial', 8)).pack(side='left', padx=5)
-                    pic2_displayed = True
+                    img2 = img2.convert("RGBA")
+                    data = img2.tobytes("raw", "RGBA")
+                    qimage = QImage(data, img2.size[0], img2.size[1], QImage.Format_RGBA8888)
+                    pixmap = QPixmap.fromImage(qimage)
+                    label2 = QLabel()
+                    label2.setPixmap(pixmap)
+                    pic_layout.addWidget(label2)
                 except Exception as e:
-                    ttk.Label(pic_frame, text=f"Picture 2: Error loading from database",
-                            foreground='red').pack(side='left', padx=5)
+                    error_label = QLabel("Picture 2: Error loading")
+                    error_label.setStyleSheet("color: red;")
+                    pic_layout.addWidget(error_label)
             elif pic2_path and os.path.exists(pic2_path):
                 try:
-                    # Fallback to file path for legacy data
-                    img2 = Image.open(pic2_path)
-                    img2.thumbnail((200, 200))
-                    photo2 = ImageTk.PhotoImage(img2)
-                    label2 = ttk.Label(pic_frame, image=photo2)
-                    label2.image = photo2  # Keep a reference
-                    label2.pack(side='left', padx=5)
-                    ttk.Label(pic_frame, text="Picture 2",
-                            font=('Arial', 8)).pack(side='left', padx=5)
-                    pic2_displayed = True
+                    pixmap = QPixmap(pic2_path)
+                    pixmap = pixmap.scaled(200, 200, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+                    label2 = QLabel()
+                    label2.setPixmap(pixmap)
+                    pic_layout.addWidget(label2)
                 except Exception as e:
-                    ttk.Label(pic_frame, text=f"Picture 2: Error loading image",
-                            foreground='red').pack(side='left', padx=5)
-            elif pic2_path:
-                ttk.Label(pic_frame, text=f"Picture 2: (File not found)",
-                        foreground='gray').pack(side='left', padx=5)
+                    error_label = QLabel("Picture 2: Error loading")
+                    error_label.setStyleSheet("color: red;")
+                    pic_layout.addWidget(error_label)
 
+            pic_widget = QWidget()
+            pic_widget.setLayout(pic_layout)
+            scroll_layout.addWidget(pic_widget, row, 1)
             row += 1
 
         # Stock status indicator
         row += 1
+        qty_stock = part_dict['quantity_in_stock']
+        min_stock = part_dict['minimum_stock']
+
         if qty_stock < min_stock:
-            status_text = "⚠️ LOW STOCK - Reorder Recommended"
+            status_text = "LOW STOCK - Reorder Recommended"
             status_color = 'red'
         elif qty_stock < min_stock * 1.5:
-            status_text = "⚡ Stock Getting Low"
+            status_text = "Stock Getting Low"
             status_color = 'orange'
         else:
-            status_text = "✅ Stock Level OK"
+            status_text = "Stock Level OK"
             status_color = 'green'
-    
-        ttk.Label(scrollable_frame, text=status_text, 
-                font=('Arial', 11, 'bold'), foreground=status_color).grid(
-                    row=row, column=0, columnspan=2, pady=20)
-    
+
+        status_label = QLabel(status_text)
+        status_label.setFont(QFont('Arial', 11, QFont.Bold))
+        status_label.setStyleSheet(f"color: {status_color};")
+        scroll_layout.addWidget(status_label, row, 0, 1, 2, Qt.AlignCenter)
+
+        scroll_area.setWidget(scroll_widget)
+        info_layout.addWidget(scroll_area)
+        tab_widget.addTab(info_widget, "Part Information")
+
         # ============================================================
-        # TAB 2: CM Usage History (NEW INTEGRATION!)
+        # TAB 2: CM Usage History
         # ============================================================
-        history_frame = ttk.Frame(notebook)
-        notebook.add(history_frame, text='🔧 CM Usage History')
-        
-        # Header
-        header_frame = ttk.Frame(history_frame)
-        header_frame.pack(fill='x', padx=10, pady=10)
-    
-        ttk.Label(header_frame, text=f"Corrective Maintenance History for {part_number}",
-                font=('Arial', 11, 'bold')).pack()
+        history_widget = QWidget()
+        history_layout = QVBoxLayout(history_widget)
+
+        header_label = QLabel(f"Corrective Maintenance History for {part_number}")
+        header_label.setFont(QFont('Arial', 11, QFont.Bold))
+        history_layout.addWidget(header_label)
 
         try:
-            # Get CM usage data - use new cursor context
+            # Get CM usage data
             with db_pool.get_cursor(commit=False) as cursor:
                 cursor.execute('''
                     SELECT
@@ -1165,20 +1147,19 @@ class MROStockManager:
 
                 cm_history = cursor.fetchall()
 
-                # Statistics frame
-                stats_frame = ttk.LabelFrame(history_frame, text="Usage Statistics", padding=10)
-                stats_frame.pack(fill='x', padx=10, pady=5)
+                # Statistics
+                stats_group = QGroupBox("Usage Statistics")
+                stats_layout = QVBoxLayout()
 
                 if cm_history:
                     total_cms = len(cm_history)
-                    # Access dictionary keys instead of indices
                     total_qty_used = sum(row['quantity_used'] for row in cm_history)
                     total_cost = sum(row['total_cost'] or 0 for row in cm_history)
 
                     stats_text = (f"Total CMs: {total_cms} | "
-                                f"Total Quantity Used: {total_qty_used:.2f} {unit} | "
+                                f"Total Quantity Used: {total_qty_used:.2f} {part_dict['unit_of_measure']} | "
                                 f"Total Cost: ${total_cost:.2f}")
-                    ttk.Label(stats_frame, text=stats_text, font=('Arial', 10)).pack()
+                    stats_layout.addWidget(QLabel(stats_text))
 
                     # Recent usage (last 30 days)
                     cursor.execute('''
@@ -1190,82 +1171,66 @@ class MROStockManager:
 
                     recent_result = cursor.fetchone()
                     recent_usage = recent_result['sum'] if recent_result and recent_result['sum'] else 0
-                    ttk.Label(stats_frame, text=f"Usage Last 30 Days: {recent_usage:.2f} {unit}",
-                            font=('Arial', 9, 'italic')).pack()
+                    recent_label = QLabel(f"Usage Last 30 Days: {recent_usage:.2f} {part_dict['unit_of_measure']}")
+                    recent_label.setFont(QFont('Arial', 9, QFont.StyleItalic))
+                    stats_layout.addWidget(recent_label)
                 else:
-                    ttk.Label(stats_frame, text="No CM usage history available",
-                            font=('Arial', 10, 'italic')).pack()
+                    no_data_label = QLabel("No CM usage history available")
+                    no_data_label.setFont(QFont('Arial', 10, QFont.StyleItalic))
+                    stats_layout.addWidget(no_data_label)
+
+                stats_group.setLayout(stats_layout)
+                history_layout.addWidget(stats_group)
         except Exception as e:
-            messagebox.showerror("Database Error", f"Error loading CM history: {str(e)}")
+            QMessageBox.critical(dialog, "Database Error", f"Error loading CM history: {str(e)}")
             return
-    
+
         # History treeview
-        tree_frame = ttk.Frame(history_frame)
-        tree_frame.pack(fill='both', expand=True, padx=10, pady=5)
-    
-        columns = ('CM #', 'Description', 'Equipment', 'Qty Used', 'Cost', 'Date', 'Technician', 'Status', 'Notes')
-        history_tree = ttk.Treeview(tree_frame, columns=columns, show='headings', height=15)
-    
-        for col in columns:
-            history_tree.heading(col, text=col)
-    
-        history_tree.column('CM #', width=100)
-        history_tree.column('Description', width=150)
-        history_tree.column('Equipment', width=100)
-        history_tree.column('Qty Used', width=70)
-        history_tree.column('Cost', width=70)
-        history_tree.column('Date', width=85)
-        history_tree.column('Technician', width=100)
-        history_tree.column('Status', width=70)
-        history_tree.column('Notes', width=120)
-    
+        history_tree = QTreeWidget()
+        columns = ['CM #', 'Description', 'Equipment', 'Qty Used', 'Cost', 'Date', 'Technician', 'Status', 'Notes']
+        history_tree.setColumnCount(len(columns))
+        history_tree.setHeaderLabels(columns)
+
         for row in cm_history:
-            # Access dictionary keys instead of indices
-            history_tree.insert('', 'end', values=(
+            desc = row['description']
+            if desc and len(desc) > 30:
+                desc = desc[:30] + '...'
+            else:
+                desc = desc or 'N/A'
+
+            notes = row['notes']
+            if notes and len(notes) > 20:
+                notes = notes[:20] + '...'
+            else:
+                notes = notes or ''
+
+            item = QTreeWidgetItem([
                 row['cm_number'],
-                row['description'][:30] + '...' if row['description'] and len(row['description']) > 30 else row['description'] or 'N/A',
+                desc,
                 row['bfm_equipment_no'] or 'N/A',
                 f"{row['quantity_used']:.2f}",
                 f"${row['total_cost']:.2f}" if row['total_cost'] else '$0.00',
                 row['recorded_date'][:10] if row['recorded_date'] else '',
                 row['recorded_by'] or 'N/A',
                 row['status'] or 'Unknown',
-                row['notes'][:20] + '...' if row['notes'] and len(row['notes']) > 20 else row['notes'] or ''
-            ))
-    
-        history_tree.pack(side='left', fill='both', expand=True)
-    
-        scrollbar_hist = ttk.Scrollbar(tree_frame, orient='vertical', command=history_tree.yview)
-        scrollbar_hist.pack(side='right', fill='y')
-        history_tree.configure(yscrollcommand=scrollbar_hist.set)
-        
-        # Double-click to view CM details
-        def on_cm_double_click(event):
-            selected = history_tree.selection()
-            if selected:
-                item = history_tree.item(selected[0])
-                cm_number = item['values'][0]
-            
-                # Try to open CM details if main app has the method
-                if hasattr(self.parent_app, 'parts_integration'):
-                    self.parent_app.parts_integration.show_cm_parts_details(cm_number)
-    
-        history_tree.bind('<Double-Button-1>', on_cm_double_click)
-    
+                notes
+            ])
+            history_tree.addTopLevelItem(item)
+
+        history_layout.addWidget(history_tree)
+        tab_widget.addTab(history_widget, "CM Usage History")
+
         # ============================================================
-        # TAB 3: Transaction History (All transactions)
+        # TAB 3: Transaction History
         # ============================================================
-        trans_frame = ttk.Frame(notebook)
-        notebook.add(trans_frame, text='📊 All Transactions')
-    
-        # Header
-        trans_header = ttk.Frame(trans_frame)
-        trans_header.pack(fill='x', padx=10, pady=10)
-    
-        ttk.Label(trans_header, text=f"All Stock Transactions for {part_number}", 
-                font=('Arial', 11, 'bold')).pack()
-    
-        # Get all transactions - use new cursor context
+        trans_widget = QWidget()
+        trans_layout = QVBoxLayout(trans_widget)
+
+        trans_header = QLabel(f"All Stock Transactions for {part_number}")
+        trans_header.setFont(QFont('Arial', 11, QFont.Bold))
+        trans_layout.addWidget(trans_header)
+
+        # Get all transactions
         with db_pool.get_cursor(commit=False) as cursor:
             cursor.execute('''
                 SELECT
@@ -1284,77 +1249,65 @@ class MROStockManager:
             transactions = cursor.fetchall()
 
             # Transactions treeview
-            trans_tree_frame = ttk.Frame(trans_frame)
-            trans_tree_frame.pack(fill='both', expand=True, padx=10, pady=5)
-
-            trans_columns = ('Date', 'Type', 'Quantity', 'Technician', 'Work Order', 'Notes')
-            trans_tree = ttk.Treeview(trans_tree_frame, columns=trans_columns, show='headings', height=20)
-
-            for col in trans_columns:
-                trans_tree.heading(col, text=col)
-
-            trans_tree.column('Date', width=150)
-            trans_tree.column('Type', width=120)
-            trans_tree.column('Quantity', width=80)
-            trans_tree.column('Technician', width=120)
-            trans_tree.column('Work Order', width=120)
-            trans_tree.column('Notes', width=200)
+            trans_tree = QTreeWidget()
+            trans_columns = ['Date', 'Type', 'Quantity', 'Technician', 'Work Order', 'Notes']
+            trans_tree.setColumnCount(len(trans_columns))
+            trans_tree.setHeaderLabels(trans_columns)
 
             for row in transactions:
-                # Access dictionary keys instead of indices
                 qty = row['quantity']
                 qty_display = f"+{qty:.2f}" if qty > 0 else f"{qty:.2f}"
 
-                trans_tree.insert('', 'end', values=(
+                item = QTreeWidgetItem([
                     row['transaction_date'][:19] if row['transaction_date'] else '',
                     row['transaction_type'] or 'N/A',
                     qty_display,
                     row['technician_name'] or 'N/A',
                     row['work_order'] or 'N/A',
                     row['notes'] or ''
-                ), tags=('addition',) if qty > 0 else ('deduction',))
-    
-        trans_tree.pack(side='left', fill='both', expand=True)
-    
-        scrollbar_trans = ttk.Scrollbar(trans_tree_frame, orient='vertical', command=trans_tree.yview)
-        scrollbar_trans.pack(side='right', fill='y')
-        trans_tree.configure(yscrollcommand=scrollbar_trans.set)
-    
-        # Color code transactions
-        trans_tree.tag_configure('addition', foreground='green')
-        trans_tree.tag_configure('deduction', foreground='red')
-    
-        # ============================================================
-        # Bottom buttons
-        # ============================================================
-        button_frame = ttk.Frame(dialog)
-        button_frame.pack(fill='x', padx=10, pady=10)
-    
-        def view_all_cm_history():
-            """Open dedicated CM history viewer"""
-            if hasattr(self.parent_app, 'parts_integration'):
-                self.parent_app.parts_integration.show_part_cm_history(part_number)
-    
-        if cm_history:
-            ttk.Button(button_frame, text="📈 View Full CM Analysis", 
-                    command=view_all_cm_history).pack(side='left', padx=5)
-    
-        ttk.Button(button_frame, text="Close", 
-                command=dialog.destroy).pack(side='right', padx=5)
+                ])
 
-    
+                # Color code based on transaction type
+                if qty > 0:
+                    for i in range(item.columnCount()):
+                        item.setForeground(i, QColor('green'))
+                else:
+                    for i in range(item.columnCount()):
+                        item.setForeground(i, QColor('red'))
+
+                trans_tree.addTopLevelItem(item)
+
+        trans_layout.addWidget(trans_tree)
+        tab_widget.addTab(trans_widget, "All Transactions")
+
+        # Add tab widget to main layout
+        main_layout.addWidget(tab_widget)
+
+        # Bottom buttons
+        button_layout = QHBoxLayout()
+
+        close_btn = QPushButton("Close")
+        close_btn.clicked.connect(dialog.accept)
+        button_layout.addStretch()
+        button_layout.addWidget(close_btn)
+
+        main_layout.addLayout(button_layout)
+
+        dialog.exec_()
+
+
     def show_parts_usage_report(self):
         """Show comprehensive parts usage report"""
-        report_dialog = tk.Toplevel(self.root)
-        report_dialog.title("Parts Usage by CM Report")
-        report_dialog.geometry("900x600")
+        dialog = QDialog(self.root)
+        dialog.setWindowTitle("Parts Usage by CM Report")
+        dialog.resize(900, 600)
+        dialog.setModal(True)
 
-        # Create report content
-        report_frame = ttk.Frame(report_dialog)
-        report_frame.pack(fill='both', expand=True, padx=10, pady=10)
+        main_layout = QVBoxLayout(dialog)
 
-        ttk.Label(report_frame, text="Parts Consumption Analysis",
-                font=('Arial', 12, 'bold')).pack(pady=10)
+        title_label = QLabel("Parts Consumption Analysis")
+        title_label.setFont(QFont('Arial', 12, QFont.Bold))
+        main_layout.addWidget(title_label)
 
         try:
             # Get summary data
@@ -1377,156 +1330,56 @@ class MROStockManager:
             usage_data = cursor.fetchall()
         except Exception as e:
             self.conn.rollback()
-            messagebox.showerror("Database Error", f"Error loading usage report: {str(e)}")
-            report_dialog.destroy()
+            QMessageBox.critical(dialog, "Database Error", f"Error loading usage report: {str(e)}")
+            dialog.reject()
             return
-    
+
         # Display in treeview
-        columns = ('Part #', 'Part Name', 'Total Qty Used', 'CMs Used In', 'Total Cost')
-        tree = ttk.Treeview(report_frame, columns=columns, show='headings')
-    
-        for col in columns:
-            tree.heading(col, text=col)
-    
-        tree.column('Part #', width=120)
-        tree.column('Part Name', width=250)
-        tree.column('Total Qty Used', width=120)
-        tree.column('CMs Used In', width=100)
-        tree.column('Total Cost', width=120)
-    
+        tree = QTreeWidget()
+        columns = ['Part #', 'Part Name', 'Total Qty Used', 'CMs Used In', 'Total Cost']
+        tree.setColumnCount(len(columns))
+        tree.setHeaderLabels(columns)
+
+        tree.setColumnWidth(0, 120)
+        tree.setColumnWidth(1, 250)
+        tree.setColumnWidth(2, 120)
+        tree.setColumnWidth(3, 100)
+        tree.setColumnWidth(4, 120)
+
         for row in usage_data:
-            tree.insert('', 'end', values=(
+            item = QTreeWidgetItem([
                 row[0],
                 row[1],
-                f"{row[2]:.2f}",
-                row[3],
-                f"${row[4]:.2f}" if row[4] else '$0.00'
-            ))
-    
-        tree.pack(fill='both', expand=True, padx=10, pady=10)
-    
-        ttk.Label(report_frame, text="(Last 90 days)", 
-                font=('Arial', 9, 'italic')).pack()
-    
-        ttk.Button(report_dialog, text="Close", 
-                command=report_dialog.destroy).pack(pady=10)
-    
-    
-    def stock_transaction_dialog(self, part_number):
-        """Dialog for stock transactions (add/remove stock)"""
-        dialog = tk.Toplevel(self.root)
-        dialog.title(f"Stock Transaction: {part_number}")
-        dialog.geometry("500x400")
-        dialog.transient(self.root)
-        dialog.grab_set()
-        
-        # Get current stock
-        cursor = self.conn.cursor()
-        cursor.execute('SELECT quantity_in_stock, unit_of_measure, name FROM mro_inventory WHERE part_number = %s', 
-                      (part_number,))
-        result = cursor.fetchone()
-        current_stock = result[0] if result else 0
-        unit = result[1] if result else ''
-        part_name = result[2] if result else ''
-        
-        ttk.Label(dialog, text=f"Part: {part_name}", 
-                 font=('Arial', 12, 'bold')).pack(pady=10)
-        ttk.Label(dialog, text=f"Current Stock: {current_stock} {unit}", 
-                 font=('Arial', 11)).pack(pady=5)
-        
-        # Transaction type
-        ttk.Label(dialog, text="Transaction Type:").pack(pady=5)
-        trans_type = tk.StringVar(value='Add')
-        ttk.Radiobutton(dialog, text="➕ Add Stock", variable=trans_type, 
-                       value='Add').pack()
-        ttk.Radiobutton(dialog, text="➖ Remove Stock", variable=trans_type, 
-                       value='Remove').pack()
-        
-        # Quantity
-        ttk.Label(dialog, text="Quantity:").pack(pady=5)
-        qty_entry = ttk.Entry(dialog, width=20)
-        qty_entry.pack(pady=5)
-        
-        # Work order
-        ttk.Label(dialog, text="Work Order (Optional):").pack(pady=5)
-        wo_entry = ttk.Entry(dialog, width=30)
-        wo_entry.pack(pady=5)
-        
-        # Notes
-        ttk.Label(dialog, text="Notes:").pack(pady=5)
-        notes_text = tk.Text(dialog, height=4, width=50)
-        notes_text.pack(pady=5)
-        
-        def process_transaction():
-            try:
-                qty = float(qty_entry.get())
-                trans_type_val = trans_type.get()
-                
-                if trans_type_val == 'Remove':
-                    qty = -qty
-                
-                new_stock = current_stock + qty
-                
-                if new_stock < 0:
-                    messagebox.showerror("Error", "Cannot remove more stock than available!")
-                    return
-                
-                # Update stock
-                cursor = self.conn.cursor()
-                cursor.execute('''
-                    UPDATE mro_inventory 
-                    SET quantity_in_stock = %s, last_updated = %s
-                    WHERE part_number = %s
-                ''', (new_stock, datetime.now().strftime('%Y-%m-%d %H:%M:%S'), part_number))
-                
-                # Log transaction
-                cursor.execute('''
-                    INSERT INTO mro_stock_transactions 
-                    (part_number, transaction_type, quantity, technician_name, 
-                     work_order, notes)
-                    VALUES (%s, %s, %s, %s, %s, %s)
-                ''', (
-                    part_number,
-                    trans_type_val,
-                    abs(qty),
-                    self.parent_app.current_user if hasattr(self.parent_app, 'current_user') else 'System',
-                    wo_entry.get(),
-                    notes_text.get('1.0', 'end-1c')
-                ))
-                
-                self.conn.commit()
-                messagebox.showinfo("Success", 
-                                  f"Stock updated!\n"
-                                  f"Previous: {current_stock} {unit}\n"
-                                  f"Change: {qty:+.1f} {unit}\n"
-                                  f"New Stock: {new_stock} {unit}")
-                dialog.destroy()
-                self.refresh_mro_list()
-                
-            except ValueError:
-                messagebox.showerror("Error", "Please enter a valid quantity")
-            except Exception as e:
-                messagebox.showerror("Error", f"Transaction failed: {str(e)}")
-        
-        ttk.Button(dialog, text="💾 Process Transaction", 
-                  command=process_transaction, width=25).pack(pady=10)
-        ttk.Button(dialog, text="❌ Cancel", 
-                  command=dialog.destroy, width=25).pack(pady=5)
-    
+                f"{float(row[2]):.2f}",
+                str(row[3]),
+                f"${float(row[4]):.2f}"
+            ])
+            tree.addTopLevelItem(item)
+
+        main_layout.addWidget(tree)
+
+        close_btn = QPushButton("Close")
+        close_btn.clicked.connect(dialog.accept)
+        main_layout.addWidget(close_btn)
+
+        dialog.exec_()
+
     def import_from_file(self):
         """Import parts from inventory.txt or CSV file"""
-        file_path = filedialog.askopenfilename(
-            title="Select Inventory File",
-            filetypes=[("Text files", "*.txt"), ("CSV files", "*.csv"), ("All files", "*.*")]
+        file_path, _ = QFileDialog.getOpenFileName(
+            self.root,
+            "Select Inventory File",
+            "",
+            "Text files (*.txt);;CSV files (*.csv);;All files (*.*)"
         )
-        
+
         if not file_path:
             return
-        
+
         try:
             imported_count = 0
             skipped_count = 0
-            
+
             with open(file_path, 'r', encoding='utf-8') as f:
                 if file_path.endswith('.csv'):
                     reader = csv.DictReader(f)
@@ -1538,29 +1391,27 @@ class MROStockManager:
                             skipped_count += 1
                 else:
                     # Parse text file format
-                    content = f.read()
-                    # You can customize this based on your inventory.txt format
-                    messagebox.showinfo("Info", 
+                    QMessageBox.information(self.root, "Info",
                                       "Please use CSV format for bulk import.\n\n"
                                       "Required columns:\n"
                                       "Name, Part Number, Model Number, Equipment, "
                                       "Engineering System, Unit of Measure, Quantity in Stock, "
                                       "Unit Price, Minimum Stock, Supplier, Location, Rack, Row, Bin")
                     return
-            
+
             self.conn.commit()
-            messagebox.showinfo("Import Complete", 
+            QMessageBox.information(self.root, "Import Complete",
                               f"Successfully imported: {imported_count} parts\n"
                               f"Skipped (duplicates/errors): {skipped_count} parts")
             self.refresh_mro_list()
-            
+
         except Exception as e:
-            messagebox.showerror("Import Error", f"Failed to import file:\n{str(e)}")
-    
+            QMessageBox.critical(self.root, "Import Error", f"Failed to import file:\n{str(e)}")
+
     def import_part_from_dict(self, data):
         """Import a single part from dictionary"""
         cursor = self.conn.cursor()
-        
+
         cursor.execute('''
             INSERT INTO mro_inventory (
                 name, part_number, model_number, equipment, engineering_system,
@@ -1584,18 +1435,19 @@ class MROStockManager:
             data.get('Row', ''),
             data.get('Bin', '')
         ))
-    
+
     def export_to_csv(self):
         """Export inventory to CSV"""
-        file_path = filedialog.asksaveasfilename(
-            title="Export Inventory",
-            defaultextension=".csv",
-            filetypes=[("CSV files", "*.csv"), ("All files", "*.*")]
+        file_path, _ = QFileDialog.getSaveFileName(
+            self.root,
+            "Export Inventory",
+            "",
+            "CSV files (*.csv);;All files (*.*)"
         )
-        
+
         if not file_path:
             return
-        
+
         try:
             cursor = self.conn.cursor()
             # Select specific columns for export (exclude binary picture data)
@@ -1619,46 +1471,42 @@ class MROStockManager:
                 writer.writerow(columns)
                 writer.writerows(rows)
 
-            messagebox.showinfo("Success", f"Inventory exported to:\n{file_path}")
+            QMessageBox.information(self.root, "Success", f"Inventory exported to:\n{file_path}")
 
         except Exception as e:
-            messagebox.showerror("Export Error", f"Failed to export:\n{str(e)}")
-    
+            QMessageBox.critical(self.root, "Export Error", f"Failed to export:\n{str(e)}")
+
     def generate_stock_report(self):
         """Generate comprehensive stock report"""
-        report_dialog = tk.Toplevel(self.root)
-        report_dialog.title("Stock Report")
-        report_dialog.geometry("900x700")
-        report_dialog.transient(self.root)
-        
+        dialog = QDialog(self.root)
+        dialog.setWindowTitle("Stock Report")
+        dialog.resize(900, 700)
+        dialog.setModal(True)
+
+        main_layout = QVBoxLayout(dialog)
+
         # Report text
-        report_frame = ttk.Frame(report_dialog)
-        report_frame.pack(fill='both', expand=True, padx=10, pady=10)
-        
-        report_text = tk.Text(report_frame, wrap='word', font=('Courier', 10))
-        report_scrollbar = ttk.Scrollbar(report_frame, command=report_text.yview)
-        report_text.configure(yscrollcommand=report_scrollbar.set)
-        
-        report_text.pack(side='left', fill='both', expand=True)
-        report_scrollbar.pack(side='right', fill='y')
-        
+        report_text = QTextEdit()
+        report_text.setReadOnly(True)
+        report_text.setFont(QFont('Courier', 10))
+
         # Generate report
         cursor = self.conn.cursor()
-        
+
         report = []
         report.append("=" * 80)
         report.append("MRO INVENTORY STOCK REPORT")
         report.append(f"Generated: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
         report.append("=" * 80)
         report.append("")
-        
+
         # Summary statistics
         cursor.execute("SELECT COUNT(*) FROM mro_inventory WHERE status = 'Active'")
         total_parts = cursor.fetchone()[0]
-        
+
         cursor.execute("SELECT SUM(quantity_in_stock * unit_price) FROM mro_inventory WHERE status = 'Active'")
         total_value = cursor.fetchone()[0] or 0
-        
+
         cursor.execute('''
             SELECT COUNT(*) FROM mro_inventory
             WHERE quantity_in_stock < minimum_stock AND status = 'Active'
@@ -1675,19 +1523,19 @@ class MROStockManager:
         report.append(f"Total Inventory Value: ${total_value:,.2f}")
         report.append(f"Low Stock Items: {low_stock_count}")
         report.append("")
-        
+
         # Low stock items
         if low_stock_count > 0:
             report.append("LOW STOCK ALERTS")
             report.append("-" * 80)
             cursor.execute('''
-                SELECT part_number, name, quantity_in_stock, minimum_stock, 
+                SELECT part_number, name, quantity_in_stock, minimum_stock,
                        unit_of_measure, location
-                FROM mro_inventory 
+                FROM mro_inventory
                 WHERE quantity_in_stock < minimum_stock AND status = 'Active'
                 ORDER BY (minimum_stock - quantity_in_stock) DESC
             ''')
-            
+
             for row in cursor.fetchall():
                 part_no, name, qty, min_qty, unit, loc = row
                 deficit = min_qty - qty
@@ -1695,18 +1543,18 @@ class MROStockManager:
                 report.append(f"  Current: {qty} {unit} | Minimum: {min_qty} {unit} | Deficit: {deficit} {unit}")
                 report.append(f"  Location: {loc}")
                 report.append("")
-        
+
         # Inventory by system
         report.append("INVENTORY BY ENGINEERING SYSTEM")
         report.append("-" * 80)
         cursor.execute('''
             SELECT engineering_system, COUNT(*), SUM(quantity_in_stock * unit_price)
-            FROM mro_inventory 
+            FROM mro_inventory
             WHERE status = 'Active'
             GROUP BY engineering_system
             ORDER BY engineering_system
         ''')
-        
+
         for row in cursor.fetchall():
             system, count, value = row
             report.append(f"  {system or 'Unknown'}: {count} parts, ${value or 0:,.2f} value")
@@ -1718,7 +1566,7 @@ class MROStockManager:
         report.append("-" * 80)
 
         try:
-            # Get monthly summary of parts used in CMs
+            # Get monthly summary
             cursor.execute('''
                 SELECT
                     TO_CHAR(recorded_date::timestamp, 'YYYY-MM') as month,
@@ -1757,7 +1605,7 @@ class MROStockManager:
 
             report.append("")
 
-            # Top 10 most used parts in CMs
+            # Top 10 most used parts
             report.append("TOP 10 PARTS USED IN CMs (ALL TIME)")
             report.append("-" * 80)
 
@@ -1784,7 +1632,7 @@ class MROStockManager:
 
                 for row in top_parts:
                     part_num = row[0]
-                    name = (row[1] or 'N/A')[:28]  # Truncate to fit
+                    name = (row[1] or 'N/A')[:28]
                     cm_count = row[2]
                     qty = float(row[3]) if row[3] else 0
                     cost = float(row[4]) if row[4] else 0
@@ -1800,100 +1648,104 @@ class MROStockManager:
         report.append("=" * 80)
         report.append("END OF REPORT")
         report.append("=" * 80)
-        
-        report_text.insert('1.0', '\n'.join(report))
-        report_text.config(state='disabled')
-        
+
+        report_text.setPlainText('\n'.join(report))
+        main_layout.addWidget(report_text)
+
         # Export button
         def export_report():
-            file_path = filedialog.asksaveasfilename(
-                title="Export Stock Report",
-                defaultextension=".txt",
-                filetypes=[("Text files", "*.txt"), ("All files", "*.*")]
+            file_path, _ = QFileDialog.getSaveFileName(
+                dialog,
+                "Export Stock Report",
+                "",
+                "Text files (*.txt);;All files (*.*)"
             )
             if file_path:
                 with open(file_path, 'w', encoding='utf-8') as f:
                     f.write('\n'.join(report))
-                messagebox.showinfo("Success", f"Report exported to:\n{file_path}")
-        
-        ttk.Button(report_dialog, text="📤 Export Report", 
-                  command=export_report).pack(pady=10)
-    
+                QMessageBox.information(dialog, "Success", f"Report exported to:\n{file_path}")
+
+        export_btn = QPushButton("Export Report")
+        export_btn.clicked.connect(export_report)
+        main_layout.addWidget(export_btn)
+
+        dialog.exec_()
+
     def show_low_stock(self):
         """Show low stock alert dialog"""
         cursor = self.conn.cursor()
         cursor.execute('''
-            SELECT part_number, name, quantity_in_stock, minimum_stock, 
+            SELECT part_number, name, quantity_in_stock, minimum_stock,
                    unit_of_measure, location, supplier
-            FROM mro_inventory 
+            FROM mro_inventory
             WHERE quantity_in_stock < minimum_stock AND status = 'Active'
             ORDER BY (minimum_stock - quantity_in_stock) DESC
         ''')
-        
+
         low_stock_items = cursor.fetchall()
-        
+
         if not low_stock_items:
-            messagebox.showinfo("Stock Status", "✅ All items are adequately stocked!")
+            QMessageBox.information(self.root, "Stock Status", "All items are adequately stocked!")
             return
-        
+
         # Create alert dialog
-        alert_dialog = tk.Toplevel(self.root)
-        alert_dialog.title(f"⚠️ Low Stock Alert ({len(low_stock_items)} items)")
-        alert_dialog.geometry("1000x600")
-        alert_dialog.transient(self.root)
-        
-        ttk.Label(alert_dialog, 
-                 text=f"⚠️ {len(low_stock_items)} items are below minimum stock level",
-                 font=('Arial', 12, 'bold'), foreground='red').pack(pady=10)
-        
+        dialog = QDialog(self.root)
+        dialog.setWindowTitle(f"Low Stock Alert ({len(low_stock_items)} items)")
+        dialog.resize(1000, 600)
+        dialog.setModal(True)
+
+        main_layout = QVBoxLayout(dialog)
+
+        alert_label = QLabel(f"{len(low_stock_items)} items are below minimum stock level")
+        alert_label.setFont(QFont('Arial', 12, QFont.Bold))
+        alert_label.setStyleSheet("color: red;")
+        main_layout.addWidget(alert_label)
+
         # Create treeview
-        tree_frame = ttk.Frame(alert_dialog)
-        tree_frame.pack(fill='both', expand=True, padx=10, pady=5)
-        
-        columns = ('Part Number', 'Name', 'Current', 'Minimum', 'Deficit', 
-                  'Unit', 'Location', 'Supplier')
-        tree = ttk.Treeview(tree_frame, columns=columns, show='headings')
-        
-        for col in columns:
-            tree.heading(col, text=col)
-            tree.column(col, width=120)
-        
-        vsb = ttk.Scrollbar(tree_frame, orient='vertical', command=tree.yview)
-        tree.configure(yscrollcommand=vsb.set)
-        
-        tree.pack(side='left', fill='both', expand=True)
-        vsb.pack(side='right', fill='y')
-        
+        tree = QTreeWidget()
+        columns = ['Part Number', 'Name', 'Current', 'Minimum', 'Deficit',
+                  'Unit', 'Location', 'Supplier']
+        tree.setColumnCount(len(columns))
+        tree.setHeaderLabels(columns)
+
+        for col_idx in range(len(columns)):
+            tree.setColumnWidth(col_idx, 120)
+
         # Populate tree
         for item in low_stock_items:
             part_no, name, current, minimum, unit, location, supplier = item
             deficit = minimum - current
-            tree.insert('', 'end', values=(
-                part_no, name, f"{current:.1f}", f"{minimum:.1f}", 
+            tree_item = QTreeWidgetItem([
+                part_no, name, f"{current:.1f}", f"{minimum:.1f}",
                 f"{deficit:.1f}", unit, location or 'N/A', supplier or 'N/A'
-            ))
-        
-        ttk.Button(alert_dialog, text="Close", 
-                  command=alert_dialog.destroy).pack(pady=10)
-    
+            ])
+            tree.addTopLevelItem(tree_item)
+
+        main_layout.addWidget(tree)
+
+        close_btn = QPushButton("Close")
+        close_btn.clicked.connect(dialog.accept)
+        main_layout.addWidget(close_btn)
+
+        dialog.exec_()
+
     def refresh_mro_list(self):
         """Refresh MRO inventory list"""
         self.update_location_filter()
         self.filter_mro_list()
         self.update_mro_statistics()
-    
+
     def filter_mro_list(self, *args):
         """Filter MRO list based on search and filters - OPTIMIZED"""
-        search_term = self.mro_search_var.get().lower()
-        system_filter = self.mro_system_filter.get()
-        status_filter = self.mro_status_filter.get()
-        location_filter = self.mro_location_filter.get()
+        search_term = self.mro_search_entry.text().lower()
+        system_filter = self.mro_system_filter.currentText()
+        status_filter = self.mro_status_filter.currentText()
+        location_filter = self.mro_location_filter.currentText()
 
         # Clear existing items
-        for item in self.mro_tree.get_children():
-            self.mro_tree.delete(item)
+        self.mro_tree.clear()
 
-        # OPTIMIZED: Only select columns needed for display (not all 23 columns)
+        # OPTIMIZED: Only select columns needed for display
         query = '''SELECT part_number, name, model_number, equipment, engineering_system,
                           unit_of_measure, quantity_in_stock, unit_price, minimum_stock,
                           location, status
@@ -1906,10 +1758,8 @@ class MROStockManager:
             params.append(system_filter)
 
         if status_filter == 'Low Stock':
-            # OPTIMIZED: This uses the partial index idx_mro_low_stock
             query += ' AND quantity_in_stock < minimum_stock'
         elif status_filter != 'All':
-            # OPTIMIZED: Uses functional index on LOWER(status)
             query += ' AND LOWER(status) = LOWER(%s)'
             params.append(status_filter)
 
@@ -1919,7 +1769,6 @@ class MROStockManager:
             params.append(location_filter)
 
         if search_term:
-            # OPTIMIZED: LOWER() functions now use functional indexes
             query += ''' AND (
                 LOWER(name) LIKE %s OR
                 LOWER(part_number) LIKE %s OR
@@ -1935,9 +1784,7 @@ class MROStockManager:
         with db_pool.get_cursor(commit=False) as cursor:
             cursor.execute(query, params)
 
-            # OPTIMIZED: Process results with reduced column set
             for idx, row in enumerate(cursor.fetchall()):
-                # Access row data by column names (RealDictCursor returns dicts)
                 part_number = row['part_number']
                 name = row['name']
                 model_number = row['model_number']
@@ -1951,28 +1798,32 @@ class MROStockManager:
                 status = row['status']
 
                 # Determine display status
-                display_status = '⚠️ LOW' if qty < min_stock else status
+                display_status = 'LOW' if qty < min_stock else status
 
-                self.mro_tree.insert('', 'end', values=(
+                item = QTreeWidgetItem([
                     part_number,
                     name,
-                    model_number,
-                    equipment,
-                    engineering_system,
+                    model_number or '',
+                    equipment or '',
+                    engineering_system or '',
                     f"{qty:.1f}",
                     f"{min_stock:.1f}",
-                    unit_of_measure,
+                    unit_of_measure or '',
                     f"${unit_price:.2f}",
-                    location,
+                    location or '',
                     display_status
-                ), tags=('low_stock',) if qty < min_stock else ())
+                ])
 
-                # Yield to event loop every 50 items to keep UI responsive
+                # Color low stock items
+                if qty < min_stock:
+                    for col_idx in range(item.columnCount()):
+                        item.setBackground(col_idx, QColor(255, 204, 204))
+
+                self.mro_tree.addTopLevelItem(item)
+
+                # Process events to keep UI responsive
                 if idx % 50 == 0:
-                    self.root.update_idletasks()
-
-        # Color low stock items
-        self.mro_tree.tag_configure('low_stock', background='#ffcccc')
+                    QApplication.processEvents()
 
     def update_location_filter(self):
         """Update location filter dropdown with unique locations from database"""
@@ -1988,21 +1839,22 @@ class MROStockManager:
                 locations = ['All'] + [row['location'] for row in cursor.fetchall()]
 
                 # Update combobox values
-                if hasattr(self, 'location_combo'):
-                    current_value = self.mro_location_filter.get()
-                    self.location_combo['values'] = locations
+                current_value = self.mro_location_filter.currentText()
+                self.mro_location_filter.clear()
+                self.mro_location_filter.addItems(locations)
 
-                    # Preserve current selection if it still exists
-                    if current_value not in locations:
-                        self.mro_location_filter.set('All')
+                # Preserve current selection if it still exists
+                if current_value in locations:
+                    self.mro_location_filter.setCurrentText(current_value)
+                else:
+                    self.mro_location_filter.setCurrentText('All')
         except Exception as e:
             print(f"Error updating location filter: {e}")
 
     def update_mro_statistics(self):
-        """Update inventory statistics - OPTIMIZED to use single query"""
+        """Update inventory statistics - OPTIMIZED"""
         with db_pool.get_cursor(commit=False) as cursor:
-            # OPTIMIZED: Combined query - 3x faster than separate queries
-            # Uses the covering index idx_mro_active_stock_value
+            # OPTIMIZED: Combined query
             cursor.execute('''
                 SELECT
                     COUNT(*) as total_parts,
@@ -2021,11 +1873,11 @@ class MROStockManager:
                          f"Total Value: ${value:,.2f} | "
                          f"Low Stock Items: {low_stock}")
 
-            self.mro_stats_label.config(text=stats_text)
-    
+            self.mro_stats_label.setText(stats_text)
+
     def sort_mro_column(self, col):
         """Sort MRO treeview by column"""
-        # Implement sorting logic here
+        # Sorting is handled automatically by QTreeWidget.setSortingEnabled(True)
         pass
 
     def migrate_photos_to_database(self):
@@ -2044,7 +1896,7 @@ class MROStockManager:
             parts_to_migrate = cursor.fetchall()
 
             if not parts_to_migrate:
-                messagebox.showinfo("Migration Complete", "No photos need migration. All photos are already in the database!")
+                QMessageBox.information(self.root, "Migration Complete", "No photos need migration. All photos are already in the database!")
                 return
 
             migrated_count = 0
@@ -2091,7 +1943,8 @@ class MROStockManager:
 
             self.conn.commit()
 
-            messagebox.showinfo(
+            QMessageBox.information(
+                self.root,
                 "Migration Complete",
                 f"Photo migration completed!\n\n"
                 f"Successfully migrated: {migrated_count} parts\n"
@@ -2101,7 +1954,7 @@ class MROStockManager:
 
         except Exception as e:
             self.conn.rollback()
-            messagebox.showerror("Migration Error", f"Failed to migrate photos:\n{str(e)}")
+            QMessageBox.critical(self.root, "Migration Error", f"Failed to migrate photos:\n{str(e)}")
 
 
 # ============================================================================
@@ -2125,7 +1978,7 @@ Example integration code:
 
     def create_all_manager_tabs(self):
         # ... your existing tabs ...
-        
+
         # Add MRO Stock tab
         self.mro_manager.create_mro_tab(self.notebook)
 """
