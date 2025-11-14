@@ -5781,7 +5781,6 @@ class AITCMMSSystem(QMainWindow):
     def __init__(self):
         super().__init__()
         self.root = self  # Compatibility
-        self.root = root
         # === NEON CLOUD DATABASE CONFIGURATION ===
         self.DB_CONFIG = {
             'host': 'ep-tiny-paper-ad8glt26-pooler.c-2.us-east-1.aws.neon.tech',
